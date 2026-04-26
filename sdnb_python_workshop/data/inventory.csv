@@ -1,0 +1,31 @@
+ProductID,Name,Category,Stock,UnitPrice
+P001,Silk Saree - Red,Textiles,18,2499.0
+P002,Silk Saree - Green,Textiles,5,2499.0
+P003,Cotton Saree Pack,Textiles,42,899.0
+P004,Bridal Lehenga,Textiles,3,8999.0
+P005,Kurti - Medium,Textiles,25,1299.0
+P006,Kurti - Large,Textiles,19,1299.0
+P007,Bedsheet Double,Textiles,14,1199.0
+P008,Bluetooth Speaker,Electronics,11,1999.0
+P009,Mobile Charger Type-C,Electronics,60,349.0
+P010,LED Bulb 9W,Electronics,120,149.0
+P011,Smart Watch,Electronics,6,3499.0
+P012,Wired Earphones,Electronics,38,249.0
+P013,Power Bank 10000mAh,Electronics,9,1499.0
+P014,Basmati Rice 5kg,Groceries,55,549.0
+P015,Filter Coffee 500g,Groceries,33,299.0
+P016,Toor Dal 1kg,Groceries,72,149.0
+P017,Cooking Oil 1L,Groceries,48,189.0
+P018,Sugar 1kg,Groceries,28,49.0
+P019,Tea Powder 250g,Groceries,21,149.0
+P020,Notebook A4 200pg,Stationery,90,89.0
+P021,Ball Pen Pack of 10,Stationery,130,49.0
+P022,Calculator Casio,Stationery,17,449.0
+P023,Stapler,Stationery,22,199.0
+P024,A4 Paper Ream,Stationery,44,299.0
+P025,File Folder,Stationery,8,79.0
+P026,Marker Pens Set,Stationery,2,149.0
+P027,Whiteboard 4x3,Stationery,0,2499.0
+P028,Highlighter Pack,Stationery,4,99.0
+P029,Glue Stick,Stationery,65,35.0
+P030,Sticky Notes,Stationery,39,79.0

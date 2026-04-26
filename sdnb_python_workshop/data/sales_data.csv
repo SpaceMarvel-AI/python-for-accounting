@@ -1,0 +1,91 @@
+Date,Product,Category,Units,Price,Region
+2026-01-07,Filter Coffee 500g,Groceries,4,303.23,Salem
+2026-01-02,Notebook A4 200pg,Stationery,6,86.76,Chennai
+2026-02-19,Bedsheet Double,Textiles,4,1243.07,Tiruchirappalli
+2026-03-25,Bridal Lehenga,Textiles,6,9248.23,Salem
+2026-01-28,Ball Pen Pack,Stationery,15,47.35,Coimbatore
+2026-03-30,Cooking Oil 1L,Groceries,7,192.68,Coimbatore
+2026-03-14,Smart Watch,Electronics,18,3429.84,Chennai
+2026-01-04,Toor Dal 1kg,Groceries,,143.57,Coimbatore
+2026-02-13,Kurti Set,Textiles,19,1290.16,Coimbatore
+2026-02-13,Bluetooth Speaker,Electronics,4,2037.51,Madurai
+2026-01-13,Cooking Oil 1L,Groceries,13,182.46,Chennai
+2026-01-07,LED Bulb 9W,Electronics,20,150.35,Madurai
+2026-02-08,LED Bulb 9W,Electronics,2,148.02,Tiruchirappalli
+2026-03-22,Calculator,Stationery,11,453.14,Chennai
+2026-02-21,Bridal Lehenga,Textiles,21,9430.61,Chennai
+2026-02-13,Kurti Set,Textiles,17,1267.63,Chennai
+2026-02-04,LED Bulb 9W,Electronics,2,152.69,Chennai
+2026-03-09,Mobile Charger,Electronics,8,349.57,Chennai
+2026-02-26,Toor Dal 1kg,Groceries,3,155.1,Tiruchirappalli
+2026-02-24,LED Bulb 9W,Electronics,2,142.44,Chennai
+2026-01-17,Cotton Saree,Textiles,5,891.07,Salem
+2026-02-08,Bluetooth Speaker,Electronics,12,2078.38,Coimbatore
+2026-01-15,Smart Watch,Electronics,1,3518.54,Coimbatore
+2026-03-26,Basmati Rice 5kg,Groceries,18,572.3,Salem
+2026-03-21,Ball Pen Pack,Stationery,24,47.74,Chennai
+2026-02-25,Mobile Charger,Electronics,14,346.12,Salem
+2026-03-09,Bridal Lehenga,Textiles,1,9319.1,Coimbatore
+2026-01-16,LED Bulb 9W,Electronics,19,145.92,Coimbatore
+2026-03-06,Notebook A4 200pg,Stationery,13,84.91,Coimbatore
+2026-01-26,Toor Dal 1kg,Groceries,13,151.19,Coimbatore
+2026-03-23,Kurti Set,Textiles,2,1267.76,Salem
+2026-01-26,Bluetooth Speaker,Electronics,25,1900.71,Coimbatore
+2026-03-11,Ball Pen Pack,Stationery,14,48.54,Coimbatore
+2026-03-12,Mobile Charger,Electronics,8,346.05,Madurai
+2026-01-17,Kurti Set,Textiles,24,1245.27,Coimbatore
+2026-02-28,Mobile Charger,Electronics,14,361.85,Madurai
+2026-03-18,Silk Saree,Textiles,5,2381.3,Chennai
+2026-03-10,Notebook A4 200pg,Stationery,16,89.36,Tiruchirappalli
+2026-03-09,Cooking Oil 1L,Groceries,21,184.72,Coimbatore
+2026-01-17,Kurti Set,Textiles,25,1340.29,Tiruchirappalli
+2026-03-25,Cotton Saree,Textiles,3,918.25,Chennai
+2026-03-12,Ball Pen Pack,Stationery,13,49.99,Salem
+2026-03-25,Bedsheet Double,Textiles,,1228.45,Coimbatore
+2026-02-03,Mobile Charger,Electronics,6,340.52,Coimbatore
+2026-01-26,Filter Coffee 500g,Groceries,24,292.5,Salem
+2026-03-22,Smart Watch,Electronics,10,3543.97,Coimbatore
+2026-03-31,Toor Dal 1kg,Groceries,2,144.62,Coimbatore
+2026-03-26,Cooking Oil 1L,Groceries,21,194.27,Salem
+2026-01-30,Bluetooth Speaker,Electronics,8,1929.14,Salem
+2026-02-17,Cotton Saree,Textiles,14,890.57,Tiruchirappalli
+2026-03-21,Calculator,Stationery,25,469.96,Chennai
+2026-01-18,Cotton Saree,Textiles,14,908.49,Salem
+2026-03-06,Cotton Saree,Textiles,11,875.85,Tiruchirappalli
+2026-01-18,LED Bulb 9W,Electronics,18,147.8,Tiruchirappalli
+2026-01-20,Bedsheet Double,Textiles,5,1182.94,Chennai
+2026-02-28,Cotton Saree,Textiles,23,905.98,
+2026-03-26,Cotton Saree,Textiles,10,857.44,Chennai
+2026-01-24,Bridal Lehenga,Textiles,18,9130.33,Madurai
+2026-02-16,Kurti Set,Textiles,20,1297.0,Salem
+2026-02-20,Filter Coffee 500g,Groceries,1,284.9,Chennai
+2026-02-07,LED Bulb 9W,Electronics,21,156.37,Tiruchirappalli
+2026-03-05,Basmati Rice 5kg,Groceries,25,572.18,Tiruchirappalli
+2026-02-19,Bridal Lehenga,Textiles,21,9346.46,Chennai
+2026-03-08,Cotton Saree,Textiles,15,914.38,Coimbatore
+2026-03-02,Ball Pen Pack,Stationery,23,47.05,Salem
+2026-03-07,Bridal Lehenga,Textiles,1,8800.48,Tiruchirappalli
+2026-03-09,Bluetooth Speaker,Electronics,1,2044.83,Chennai
+2026-02-15,Mobile Charger,Electronics,16,345.57,Madurai
+2026-01-21,LED Bulb 9W,Electronics,4,142.39,Madurai
+2026-03-29,Notebook A4 200pg,Stationery,22,89.63,Coimbatore
+2026-01-30,LED Bulb 9W,Electronics,12,143.66,Chennai
+2026-02-28,Mobile Charger,Electronics,8,358.53,Salem
+2026-01-01,LED Bulb 9W,Electronics,1,146.53,Coimbatore
+2026-03-07,Cooking Oil 1L,Groceries,12,194.96,Chennai
+2026-03-09,Cotton Saree,Textiles,6,938.37,Chennai
+2026-01-17,Kurti Set,Textiles,10,1349.1,Coimbatore
+2026-02-19,Silk Saree,Textiles,18,2418.56,Salem
+2026-03-22,Toor Dal 1kg,Groceries,20,147.19,Coimbatore
+2026-02-08,Kurti Set,Textiles,17,1275.02,Madurai
+2026-02-17,Smart Watch,Electronics,9,3482.44,Chennai
+2026-01-19,Notebook A4 200pg,Stationery,250,91.25,Madurai
+2026-01-17,Bridal Lehenga,Textiles,22,9309.9,Tiruchirappalli
+2026-03-31,Ball Pen Pack,Stationery,20,48.36,Chennai
+2026-01-22,Kurti Set,Textiles,14,1321.88,Coimbatore
+2026-01-31,Notebook A4 200pg,Stationery,7,88.21,Coimbatore
+2026-01-17,Toor Dal 1kg,Groceries,24,146.19,Coimbatore
+2026-03-05,Toor Dal 1kg,Groceries,24,150.63,Madurai
+2026-02-28,Silk Saree,Textiles,1,2559.06,Tiruchirappalli
+2026-01-15,Cooking Oil 1L,Groceries,15,185.2,Madurai
+2026-03-24,Basmati Rice 5kg,Groceries,19,553.69,Coimbatore
