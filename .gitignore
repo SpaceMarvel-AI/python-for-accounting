@@ -4,3 +4,6 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 Thumbs.db
+
+# Downloaded reference materials (not distributed)
+sdnb_python_workshop/_build/pdf_src/
