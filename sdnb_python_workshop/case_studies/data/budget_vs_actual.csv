@@ -1,0 +1,44 @@
+Department,LineItem,Budget,Actual
+Manufacturing,Salaries,450000,465657.29
+Sales & Marketing,Salaries,320000,309983.66
+Logistics,Salaries,210000,222895.97
+HR,Salaries,180000,190232.7
+IT,Salaries,250000,267719.29
+Finance,Salaries,160000,162024.03
+Manufacturing,Rent,80000,80000.0
+Sales & Marketing,Rent,80000,80000.0
+Logistics,Rent,80000,80000.0
+HR,Rent,80000,80000.0
+IT,Rent,80000,80000.0
+Finance,Rent,80000,80000.0
+Manufacturing,Utilities,25000,29649.47
+Sales & Marketing,Utilities,25000,23432.1
+Logistics,Utilities,25000,27369.17
+HR,Utilities,25000,26278.3
+IT,Utilities,25000,27849.9
+Finance,Utilities,25000,23512.31
+Manufacturing,Travel,35000,46704.32
+Sales & Marketing,Travel,150000,247500.0
+Logistics,Travel,60000,78578.59
+HR,Travel,25000,34451.21
+IT,Travel,40000,40007.59
+Finance,Travel,30000,30095.9
+Sales & Marketing,Marketing,250000,315956.83
+Manufacturing,Software & Licenses,15000,15071.17
+Sales & Marketing,Software & Licenses,25000,25799.06
+Logistics,Software & Licenses,10000,11414.88
+HR,Software & Licenses,12000,14962.13
+IT,Software & Licenses,120000,128757.11
+Finance,Software & Licenses,30000,29565.22
+Manufacturing,Training,35000,33808.29
+Sales & Marketing,Training,35000,36831.13
+Logistics,Training,35000,29162.7
+HR,Training,35000,25934.22
+IT,Training,35000,36825.0
+Finance,Training,35000,24931.02
+Manufacturing,Misc / Office,18000,22479.81
+Sales & Marketing,Misc / Office,18000,21410.25
+Logistics,Misc / Office,18000,21743.18
+HR,Misc / Office,18000,18309.82
+IT,Misc / Office,18000,22133.43
+Finance,Misc / Office,18000,18540.58

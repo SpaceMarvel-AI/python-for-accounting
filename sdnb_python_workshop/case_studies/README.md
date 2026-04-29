@@ -1,6 +1,6 @@
-# 📁 Case Studies — SDNB Business Analytics Capstone
+# 📁 Case Studies — SDNB Business Analytics & Accounting Capstone
 
-Three end-to-end case studies that combine the skills from Days 1–4 of the workshop into realistic business problems. Each notebook follows the same structure:
+Six end-to-end case studies that combine the skills from Days 1–4 of the workshop into realistic business and accounting problems. The first three are **business-analytics** focused; cases 4–6 are **accounting-specific** workflows. Each notebook follows the same structure:
 
 1. **Background & scenario** (markdown)
 2. **Specific business questions** to answer
@@ -44,6 +44,38 @@ Three end-to-end case studies that combine the skills from Days 1–4 of the wor
 
 ---
 
+## 🧾 Accounting-focused case studies
+
+## Case 4 — [Saraswathi Garments: AR Aging & Provision](Case4_Saraswathi_AR_Aging_and_Provision.ipynb)
+
+**Workflow:** Accounts Receivable management
+**Skills exercised:** Date arithmetic, conditional bucketing, customer-level aggregation, journal entry preparation
+**The puzzle:** Build the standard 4-bucket aging schedule from raw invoices, compute provision per the company's IndAS-aligned matrix (1% / 5% / 15% / 30% / 50%), surface the top 5 customers to chase, and pass the provision journal entry.
+
+**Data:** `data/ar_invoices.csv` — 67 outstanding invoices across 12 customers
+
+---
+
+## Case 5 — [Bharath Cotton: Inventory Valuation Comparison](Case5_Bharath_Cotton_Inventory_Valuation.ipynb)
+
+**Workflow:** Inventory accounting (Ind AS 2 / AS 2)
+**Skills exercised:** Implementing FIFO via a `deque`, LIFO via a stack, perpetual weighted-average; comparing COGS, gross profit, tax and ending inventory under each
+**The puzzle:** Q1 purchase prices climbed from ₹320 → ₹410. Apply all three methods to the same purchase + sales transactions, compute downstream P&L impact, then recommend the right method (FIFO vs Weighted Average — LIFO is not Ind-AS-permitted but shown for comparison).
+
+**Data:** `data/inventory_transactions.csv` — 10 mixed purchase + sale transactions
+
+---
+
+## Case 6 — [Murugan Industries: Budget vs Actual Variance](Case6_Murugan_Industries_Budget_Variance.ipynb)
+
+**Workflow:** Management accounting / variance analysis
+**Skills exercised:** Pivot tables, heatmaps with diverging colour scales, materiality thresholds, auto-generated MD&A bullets
+**The puzzle:** 6 departments × 8 line items = 43 budget lines. Compute every variance, classify favourable / adverse, surface materially adverse items (>10%), build a Department × LineItem heatmap, and produce the board-ready MD&A.
+
+**Data:** `data/budget_vs_actual.csv` — 43 budget vs actual lines
+
+---
+
 ## ▶️ How to run
 
 These notebooks are designed to run on **Google Colab** or local **Jupyter**:
@@ -59,10 +91,14 @@ Each notebook auto-detects whether it's running locally (`data/`) or with the da
 All datasets are reproducible:
 
 ```bash
-python _build/gen_case_data.py     # rewrites the 4 CSV files in case_studies/data/
-python _build/build_case1.py       # rebuilds the Case 1 notebook
+python _build/gen_case_data.py            # rewrites Cases 1-3 datasets
+python _build/gen_accounting_case_data.py # rewrites Cases 4-6 datasets
+python _build/build_case1.py              # rebuilds the Case 1 notebook
 python _build/build_case2.py
 python _build/build_case3.py
+python _build/build_case4.py
+python _build/build_case5.py
+python _build/build_case6.py
 ```
 
 ## 🎯 How to use these as student assignments
