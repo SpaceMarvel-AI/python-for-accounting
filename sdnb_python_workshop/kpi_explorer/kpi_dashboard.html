@@ -3,350 +3,606 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SDNB KPI Explorer — Auto-EDA & KPI Dashboard</title>
+<title>SDNB KPI Explorer v2 — Auto-EDA, Filters, Pivot, Insights</title>
 
-<!-- Libraries via CDN -->
+<!-- CDN libraries -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-boxplot@4.4.4/build/index.umd.min.js"></script>
 
 <style>
-  :root {
-    --bg:        #0f1224;
-    --panel:     #181d36;
-    --panel-2:   #1f2647;
-    --border:    #2a3160;
-    --text:      #e6e9f5;
-    --muted:     #99a3c2;
-    --accent:    #ffd166;
-    --good:      #06d6a0;
-    --warn:      #ffb703;
-    --bad:       #ef476f;
-    --blue:      #4cc9f0;
-    --purple:    #b388ff;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
+/* ════════════════════════════════════════════════════════════════════
+   THEMING — CSS variables, two themes (dark default, light toggle)
+   ════════════════════════════════════════════════════════════════════ */
+:root, [data-theme="dark"] {
+  --bg:        #0f1224;
+  --panel:     #181d36;
+  --panel-2:   #1f2647;
+  --border:    #2a3160;
+  --text:      #e6e9f5;
+  --muted:     #99a3c2;
+  --accent:    #ffd166;
+  --good:      #06d6a0;
+  --warn:      #ffb703;
+  --bad:       #ef476f;
+  --blue:      #4cc9f0;
+  --purple:    #b388ff;
+  --pink:      #f15bb5;
+  --shadow:    0 4px 20px rgba(0,0,0,0.35);
+}
+[data-theme="light"] {
+  --bg:        #f5f7fb;
+  --panel:     #ffffff;
+  --panel-2:   #eef0f7;
+  --border:    #d8dcec;
+  --text:      #1d2147;
+  --muted:     #5a6480;
+  --accent:    #b86e00;
+  --good:      #008060;
+  --warn:      #b67100;
+  --bad:       #c73757;
+  --blue:      #0a6bbf;
+  --purple:    #6a3cc4;
+  --pink:      #b3367e;
+  --shadow:    0 2px 12px rgba(0,0,0,0.08);
+}
 
-  /* Header */
-  header {
-    padding: 22px 28px;
-    background: linear-gradient(135deg, #181d36 0%, #2a3160 100%);
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
-  }
-  header h1 {
-    margin: 0; font-size: 22px; font-weight: 700;
-    color: var(--accent); letter-spacing: 0.5px;
-  }
-  header .sub { color: var(--muted); font-size: 13px; }
-  header .grow { flex: 1; }
-  header .actions button {
-    background: var(--panel-2); color: var(--text);
-    border: 1px solid var(--border); border-radius: 6px;
-    padding: 8px 14px; cursor: pointer; font-size: 13px;
-  }
-  header .actions button:hover { background: var(--border); }
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; }
+body {
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; transition: background 0.2s, color 0.2s;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
 
-  main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+/* ════════════════════════════════════════════════════════════════════
+   HEADER
+   ════════════════════════════════════════════════════════════════════ */
+header {
+  position: sticky; top: 0; z-index: 50;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, var(--panel) 0%, var(--panel-2) 100%);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  box-shadow: var(--shadow);
+}
+header h1 {
+  margin:0; font-size: 18px; font-weight: 700;
+  color: var(--accent); letter-spacing: 0.3px;
+}
+header .sub { color: var(--muted); font-size: 12px; }
+header .grow { flex: 1; }
+header button.toolbtn {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 12px; cursor: pointer; font-size: 12px;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: 0.15s;
+}
+header button.toolbtn:hover { background: var(--border); }
+header button.toolbtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* Upload zone */
-  #drop {
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 50px 30px;
-    text-align: center;
-    color: var(--muted);
-    background: var(--panel);
-    transition: 0.2s;
-    cursor: pointer;
-  }
-  #drop:hover, #drop.over {
-    border-color: var(--accent);
-    background: var(--panel-2);
-    color: var(--text);
-  }
-  #drop h2 { margin: 0 0 6px; color: var(--text); font-size: 18px; }
-  #drop p  { margin: 4px 0; }
-  #drop input { display: none; }
-  #drop .hint { font-size: 12px; margin-top: 8px; }
+/* ════════════════════════════════════════════════════════════════════
+   FILTER BAR
+   ════════════════════════════════════════════════════════════════════ */
+#filterBar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 13px;
+}
+#filterBar.empty { display: none; }
+#filterBar .label { color: var(--muted); margin-right: 4px; }
+#filterBar .chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 4px 10px;
+  color: var(--text);
+}
+#filterBar .chip b { color: var(--accent); }
+#filterBar .chip .x {
+  cursor: pointer; color: var(--muted);
+  font-weight: bold; padding: 0 2px;
+}
+#filterBar .chip .x:hover { color: var(--bad); }
+#filterBar .clear {
+  margin-left: auto; cursor: pointer; color: var(--bad);
+  background: none; border: none; font-size: 12px;
+}
 
-  .examples {
-    margin-top: 14px; text-align: center; color: var(--muted); font-size: 12px;
-  }
-  .examples button {
-    background: transparent; color: var(--accent);
-    border: 1px solid var(--border); border-radius: 4px;
-    padding: 4px 10px; margin: 0 4px; cursor: pointer; font-size: 12px;
-  }
-  .examples button:hover { background: var(--panel-2); }
+/* ════════════════════════════════════════════════════════════════════
+   LAYOUT — sidebar + main
+   ════════════════════════════════════════════════════════════════════ */
+#layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 0;
+  min-height: calc(100vh - 100px);
+}
+@media (max-width: 900px) {
+  #layout { grid-template-columns: 1fr; }
+  aside.sidebar { border-right: none !important; border-bottom: 1px solid var(--border); }
+}
+aside.sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 18px 16px;
+  overflow-y: auto;
+  max-height: calc(100vh - 100px);
+  position: sticky; top: 100px;
+}
+@media (max-width: 900px) { aside.sidebar { position: static; max-height: none; } }
+aside.sidebar h3 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--accent); margin: 16px 0 8px;
+}
+aside.sidebar h3:first-child { margin-top: 0; }
 
-  /* Section headings */
-  h2.section {
-    font-size: 14px; text-transform: uppercase; letter-spacing: 1.2px;
-    color: var(--accent); margin: 36px 0 14px; font-weight: 600;
-  }
+main { padding: 22px 24px; min-width: 0; }
+main h2.section {
+  font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px;
+  color: var(--accent); margin: 26px 0 12px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+}
+main h2.section:first-child { margin-top: 0; }
+main h2.section .pill {
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--muted); border-radius: 10px; padding: 1px 8px;
+  font-size: 11px; font-weight: 500;
+}
 
-  /* Headline KPIs */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
-  }
-  .kpi {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 16px;
-  }
-  .kpi .label {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
-    color: var(--muted); margin-bottom: 8px;
-  }
-  .kpi .value {
-    font-size: 24px; font-weight: 700; color: var(--accent);
-  }
-  .kpi .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
-  .kpi.good .value { color: var(--good); }
-  .kpi.warn .value { color: var(--warn); }
-  .kpi.bad  .value { color: var(--bad);  }
+/* ════════════════════════════════════════════════════════════════════
+   UPLOAD
+   ════════════════════════════════════════════════════════════════════ */
+#dropZone {
+  border: 2px dashed var(--border); border-radius: 12px;
+  padding: 60px 30px; text-align: center; color: var(--muted);
+  background: var(--panel); cursor: pointer;
+  transition: 0.2s; margin: 24px auto; max-width: 700px;
+}
+#dropZone:hover, #dropZone.over {
+  border-color: var(--accent); background: var(--panel-2); color: var(--text);
+}
+#dropZone h2 { margin: 0 0 6px; color: var(--text); font-size: 18px; }
+#dropZone p  { margin: 4px 0; font-size: 13px; }
+#dropZone input { display: none; }
+.examples {
+  margin: 14px auto 30px; max-width: 700px; text-align: center;
+  color: var(--muted); font-size: 12px;
+}
+.examples button {
+  background: transparent; color: var(--accent);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 4px 10px; margin: 0 4px; cursor: pointer; font-size: 12px;
+}
+.examples button:hover { background: var(--panel-2); }
 
-  /* Column profile table */
-  .table-wrap {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; overflow: auto; max-height: 380px;
-  }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td {
-    padding: 8px 12px; text-align: left;
-    border-bottom: 1px solid var(--border); white-space: nowrap;
-  }
-  th {
-    background: var(--panel-2); position: sticky; top: 0; z-index: 1;
-    color: var(--accent); font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.6px; font-size: 11px;
-  }
-  tr:hover td { background: rgba(255,255,255,0.02); }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  td.type {
-    font-size: 11px; text-transform: uppercase;
-    color: var(--muted); letter-spacing: 0.6px;
-  }
-  td.type.numeric    { color: var(--good); }
-  td.type.categorical{ color: var(--blue); }
-  td.type.date       { color: var(--purple); }
-  td.type.id         { color: var(--muted); }
+/* ════════════════════════════════════════════════════════════════════
+   KPI CARDS
+   ════════════════════════════════════════════════════════════════════ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+}
+.kpi {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px;
+  transition: 0.2s; box-shadow: var(--shadow);
+}
+.kpi:hover { transform: translateY(-1px); border-color: var(--accent); }
+.kpi .label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+  color: var(--muted); margin-bottom: 6px;
+}
+.kpi .value {
+  font-size: 22px; font-weight: 700; color: var(--accent);
+  line-height: 1.2;
+}
+.kpi .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.kpi.good .value { color: var(--good); }
+.kpi.warn .value { color: var(--warn); }
+.kpi.bad  .value { color: var(--bad);  }
 
-  /* Chart grid */
-  .chart-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: 16px;
-  }
-  .chart-card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 14px;
-  }
-  .chart-card h3 {
-    margin: 0 0 6px; font-size: 14px; color: var(--text); font-weight: 600;
-  }
-  .chart-card .sub { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
-  .chart-card .canvas-wrap {
-    position: relative; height: 240px;
-  }
+/* ════════════════════════════════════════════════════════════════════
+   TABLES
+   ════════════════════════════════════════════════════════════════════ */
+.table-wrap {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; overflow: auto; max-height: 420px;
+  box-shadow: var(--shadow);
+}
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td {
+  padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+th {
+  background: var(--panel-2); position: sticky; top: 0; z-index: 1;
+  color: var(--accent); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.6px; font-size: 10px;
+  cursor: pointer; user-select: none;
+}
+th:hover { background: var(--border); }
+th .arrow { display: inline-block; margin-left: 4px; opacity: 0.4; }
+th.sort-asc .arrow, th.sort-desc .arrow { opacity: 1; }
+tr:hover td { background: rgba(127,127,127,0.05); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.type {
+  font-size: 10px; text-transform: uppercase;
+  color: var(--muted); letter-spacing: 0.6px;
+}
+td.type.numeric    { color: var(--good);   }
+td.type.categorical{ color: var(--blue);   }
+td.type.date       { color: var(--purple); }
+td.type.id         { color: var(--muted);  }
 
-  /* Insights */
-  .insights {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 18px; line-height: 1.7;
-  }
-  .insights ul { margin: 0; padding-left: 20px; }
-  .insights li { margin-bottom: 6px; }
-  .insights .icon { display: inline-block; width: 18px; }
+/* ════════════════════════════════════════════════════════════════════
+   CHARTS
+   ════════════════════════════════════════════════════════════════════ */
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 14px;
+}
+.chart-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px;
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+}
+.chart-card.span2 { grid-column: span 2; }
+@media (max-width: 760px) { .chart-card.span2 { grid-column: span 1; } }
+.chart-card .head {
+  display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;
+}
+.chart-card .head .title-block { flex: 1; min-width: 0; }
+.chart-card h3 {
+  margin: 0; font-size: 13px; color: var(--text); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chart-card .sub {
+  font-size: 11px; color: var(--muted); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chart-card .actions {
+  display: flex; gap: 4px;
+}
+.chart-card .actions select, .chart-card .actions button {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 6px; font-size: 11px; cursor: pointer;
+}
+.chart-card .actions button:hover, .chart-card .actions select:hover { background: var(--border); }
+.chart-card .canvas-wrap {
+  position: relative; height: 240px;
+}
+.chart-card .canvas-wrap.tall { height: 320px; }
 
-  /* Footer */
-  footer {
-    padding: 30px; text-align: center;
-    color: var(--muted); font-size: 12px;
-  }
-  footer a { color: var(--accent); text-decoration: none; }
+/* ════════════════════════════════════════════════════════════════════
+   INSIGHTS
+   ════════════════════════════════════════════════════════════════════ */
+.insights {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 18px; box-shadow: var(--shadow);
+}
+.insights ul { margin: 0; padding-left: 18px; line-height: 1.7; }
+.insights li { margin-bottom: 4px; font-size: 13px; }
+.insights .icon {
+  display: inline-block; width: 18px; text-align: center;
+}
 
-  /* Hidden initially */
-  .hidden { display: none; }
+/* ════════════════════════════════════════════════════════════════════
+   SIDEBAR widgets
+   ════════════════════════════════════════════════════════════════════ */
+.col-list { font-size: 12px; }
+.col-list .col-row {
+  display: flex; align-items: center; padding: 4px 6px; border-radius: 4px;
+  cursor: default;
+}
+.col-list .col-row:hover { background: var(--panel-2); }
+.col-list .col-row .name {
+  flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.col-list .col-row .badge {
+  font-size: 9px; text-transform: uppercase; padding: 1px 5px;
+  border-radius: 3px; margin-left: 6px; background: var(--panel-2);
+  color: var(--muted); letter-spacing: 0.6px;
+}
+.col-list .badge.numeric    { color: var(--good);   }
+.col-list .badge.categorical{ color: var(--blue);   }
+.col-list .badge.date       { color: var(--purple); }
+.col-list .badge.id         { color: var(--muted);  }
 
-  /* Loading spinner */
-  #loading {
-    text-align: center; padding: 30px; color: var(--muted);
-  }
-  .spinner {
-    display: inline-block; width: 20px; height: 20px;
-    border: 3px solid var(--border); border-top-color: var(--accent);
-    border-radius: 50%; animation: spin 0.8s linear infinite;
-    vertical-align: middle; margin-right: 10px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+.pivot-form { font-size: 12px; }
+.pivot-form label { display: block; color: var(--muted); margin: 8px 0 4px; }
+.pivot-form select, .pivot-form input {
+  width: 100%; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--panel-2);
+  color: var(--text);
+}
+.pivot-form button {
+  width: 100%; padding: 8px; background: var(--accent); color: #15182d;
+  border: none; border-radius: 6px; font-weight: 600; margin-top: 12px;
+  cursor: pointer; transition: 0.2s;
+}
+.pivot-form button:hover { filter: brightness(1.08); }
+
+/* ════════════════════════════════════════════════════════════════════
+   FOOTER + UTILITIES
+   ════════════════════════════════════════════════════════════════════ */
+footer {
+  padding: 24px; text-align: center;
+  color: var(--muted); font-size: 12px;
+  border-top: 1px solid var(--border); margin-top: 30px;
+}
+footer a { color: var(--accent); text-decoration: none; }
+
+.hidden { display: none !important; }
+
+#loading {
+  text-align: center; padding: 40px; color: var(--muted);
+}
+.spinner {
+  display: inline-block; width: 20px; height: 20px;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  vertical-align: middle; margin-right: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  padding: 10px 16px; border-radius: 6px;
+  box-shadow: var(--shadow); font-size: 13px;
+  opacity: 0; transform: translateY(20px); transition: 0.25s;
+  z-index: 100; max-width: 320px;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+
+/* Clickable chart hint */
+.chart-card .hint-click {
+  font-size: 10px; color: var(--muted); margin-top: 4px;
+  font-style: italic;
+}
+
+/* Print */
+@media print {
+  header, aside.sidebar, #filterBar, footer, .chart-card .actions { display: none !important; }
+  #layout { grid-template-columns: 1fr; }
+  body { background: white; color: black; }
+  .chart-card, .kpi, .insights, .table-wrap { break-inside: avoid; }
+}
 </style>
 </head>
 
-<body>
+<body data-theme="dark">
 
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- HEADER                                                        -->
+<!-- ══════════════════════════════════════════════════════════════ -->
 <header>
   <div>
-    <h1>📊 SDNB KPI Explorer</h1>
-    <div class="sub">Drop any CSV → auto-detect data types → KPIs &amp; dashboard</div>
+    <h1>📊 SDNB KPI Explorer <span style="font-size:10px;color:var(--muted)">v2</span></h1>
+    <div class="sub">Drop CSV / Excel / JSON → Auto-EDA, filters, pivot &amp; insights</div>
   </div>
   <div class="grow"></div>
-  <div class="actions">
-    <button id="resetBtn" class="hidden">↺ New file</button>
-  </div>
+  <button class="toolbtn" id="themeBtn" title="Toggle theme">☀️ Light</button>
+  <button class="toolbtn" id="exportBtn" title="Print / Save dashboard as PDF" disabled>🖨 Export</button>
+  <button class="toolbtn" id="resetBtn" title="Load a different file" disabled>↺ Reset</button>
 </header>
 
-<main>
+<!-- Active filters bar -->
+<div id="filterBar" class="empty">
+  <span class="label">🔎 Filters:</span>
+  <div id="filterChips" style="display:contents"></div>
+  <button class="clear" id="clearFiltersBtn">Clear all</button>
+</div>
 
-  <!-- Upload zone (visible until a file is loaded) -->
-  <div id="upload-section">
-    <label id="drop" for="fileInput" tabindex="0" role="button">
-      <input id="fileInput" type="file" accept=".csv,.tsv,.txt">
-      <h2>📂 Drop a CSV here, or click to choose</h2>
-      <p>Any structured tabular file works — sales, inventory, customers, exam marks…</p>
-      <p class="hint">Files are processed entirely in your browser. Nothing is uploaded.</p>
-    </label>
-    <div class="examples">
-      Try a sample to see what it does:
-      <button data-sample="sales">sales data</button>
+<!-- Upload screen (visible until a dataset is loaded) -->
+<div id="uploadScreen">
+  <label id="dropZone" for="fileInput" tabindex="0" role="button">
+    <input id="fileInput" type="file"
+           accept=".csv,.tsv,.txt,.json,.xlsx,.xls">
+    <h2>📂 Drop a file here, or click to choose</h2>
+    <p>Supports <strong>CSV</strong>, <strong>TSV</strong>, <strong>JSON</strong>, <strong>Excel (.xlsx / .xls)</strong>.</p>
+    <p style="font-size:12px;margin-top:10px">Files are processed entirely in your browser — nothing is uploaded.</p>
+  </label>
+  <div class="examples">
+    Or load a sample to see the dashboard immediately:
+    <button data-sample="sales">sales</button>
+    <button data-sample="employees">employees</button>
+    <button data-sample="inventory">inventory</button>
+    <button data-sample="transactions">transactions</button>
+  </div>
+</div>
+
+<!-- Loading state -->
+<div id="loading" class="hidden"><span class="spinner"></span>Parsing &amp; analysing…</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- DASHBOARD LAYOUT (sidebar + main)                              -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="layout" class="hidden">
+
+  <aside class="sidebar">
+    <h3>📋 Columns</h3>
+    <div class="col-list" id="columnList"></div>
+
+    <h3>🔧 Pivot Builder</h3>
+    <div class="pivot-form">
+      <label>Group by</label>
+      <select id="pivotGroup"></select>
+
+      <label>Aggregation</label>
+      <select id="pivotAgg">
+        <option value="sum">Sum</option>
+        <option value="mean">Mean</option>
+        <option value="count">Count</option>
+        <option value="min">Min</option>
+        <option value="max">Max</option>
+        <option value="median">Median</option>
+      </select>
+
+      <label>Of column</label>
+      <select id="pivotValue"></select>
+
+      <label>Chart type</label>
+      <select id="pivotChart">
+        <option value="bar">Bar</option>
+        <option value="line">Line</option>
+        <option value="doughnut">Doughnut</option>
+        <option value="horizontalBar">Horizontal bar</option>
+      </select>
+
+      <button id="pivotAddBtn">+ Add Pivot Chart</button>
+    </div>
+
+    <h3>📥 Sample data</h3>
+    <div class="examples" style="margin:0;text-align:left">
+      <button data-sample="sales">sales</button>
       <button data-sample="employees">employees</button>
       <button data-sample="inventory">inventory</button>
+      <button data-sample="transactions">transactions</button>
     </div>
-  </div>
+  </aside>
 
-  <!-- Loading state -->
-  <div id="loading" class="hidden"><span class="spinner"></span>Parsing &amp; analysing…</div>
-
-  <!-- Dashboard sections (filled in after upload) -->
-  <div id="dashboard" class="hidden">
-
-    <h2 class="section">📌 Dataset Snapshot</h2>
+  <main>
+    <h2 class="section">📌 Snapshot <span class="pill" id="snapshotPill"></span></h2>
     <div id="snapshot" class="kpi-grid"></div>
 
-    <h2 class="section">🧮 Auto-Detected Headline KPIs</h2>
+    <h2 class="section">🧮 Headline KPIs</h2>
     <div id="headline" class="kpi-grid"></div>
 
-    <h2 class="section">🔍 Column Profile</h2>
-    <div class="table-wrap">
-      <table id="profile">
-        <thead>
-          <tr>
-            <th>Column</th>
-            <th>Type</th>
-            <th>Non-null</th>
-            <th>Missing</th>
-            <th>Unique</th>
-            <th>Min / Top</th>
-            <th>Max</th>
-            <th>Mean</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <h2 class="section">💡 Insights</h2>
+    <h2 class="section">💡 Smart Insights</h2>
     <div id="insights" class="insights"></div>
 
-    <h2 class="section">📈 KPI Charts (auto-generated)</h2>
+    <h2 class="section">🔍 Column Profile</h2>
+    <div class="table-wrap"><table id="profile">
+      <thead><tr>
+        <th data-key="col">Column<span class="arrow">↕</span></th>
+        <th data-key="type">Type<span class="arrow">↕</span></th>
+        <th data-key="non_null">Non-null<span class="arrow">↕</span></th>
+        <th data-key="missing">Missing<span class="arrow">↕</span></th>
+        <th data-key="unique">Unique<span class="arrow">↕</span></th>
+        <th data-key="min">Min / Top<span class="arrow">↕</span></th>
+        <th data-key="max">Max<span class="arrow">↕</span></th>
+        <th data-key="mean">Mean<span class="arrow">↕</span></th>
+        <th data-key="median">Median<span class="arrow">↕</span></th>
+        <th data-key="outliers">Outliers<span class="arrow">↕</span></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+
+    <h2 class="section">📈 Charts <span class="pill" id="chartPill"></span></h2>
     <div id="charts" class="chart-grid"></div>
 
-    <h2 class="section">🔢 Data Preview (first 10 rows)</h2>
-    <div class="table-wrap">
-      <table id="preview">
-        <thead><tr></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-</main>
+    <h2 class="section">🔢 Data Preview <span class="pill" id="previewPill"></span></h2>
+    <div class="table-wrap"><table id="preview">
+      <thead><tr></tr></thead><tbody></tbody>
+    </table></div>
+  </main>
+</div>
 
 <footer>
-  Built for the <strong>SDNB Python Workshop</strong>.
-  Open-source on <a href="https://github.com/SpaceMarvel-AI/python-for-accounting"
-    target="_blank">GitHub</a>.
-  Charts: Chart.js · Parsing: PapaParse · No server, no upload — everything runs in your browser.
+  Built for the <strong>SDNB Python Workshop</strong> ·
+  <a href="https://github.com/SpaceMarvel-AI/python-for-accounting" target="_blank">GitHub</a> ·
+  Charts: Chart.js · Parsing: PapaParse + SheetJS · No server, no upload, all in-browser.
 </footer>
 
-<script>
-// ────────────────────────────────────────────────────────────────────────
-//  PALETTE — used by every chart for consistency
-// ────────────────────────────────────────────────────────────────────────
-const COLORS = ["#ffd166", "#06d6a0", "#4cc9f0", "#b388ff", "#ef476f",
-                "#f78c6b", "#80ed99", "#ffb703", "#9381ff", "#80cbc4"];
-Chart.defaults.color = "#99a3c2";
-Chart.defaults.borderColor = "#2a3160";
-Chart.defaults.font.family = "system-ui, sans-serif";
+<div id="toast"></div>
 
-// ────────────────────────────────────────────────────────────────────────
-//  STATE — registry of created charts so we can destroy on reload
-// ────────────────────────────────────────────────────────────────────────
-const chartRegistry = [];
-function destroyCharts() {
-  chartRegistry.forEach(c => c.destroy());
-  chartRegistry.length = 0;
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- APPLICATION LOGIC                                              -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<script>
+"use strict";
+
+/* ════════════════════════════════════════════════════════════════
+   GLOBAL STATE
+   ════════════════════════════════════════════════════════════════ */
+const State = {
+  rawRows:    [],   // original parsed rows (immutable)
+  rows:       [],   // filtered rows (= rawRows when no filters)
+  columns:    [],   // ordered list of column names
+  profile:    [],   // [{col, type, non_null, missing, unique, stats, dates, top, ...}]
+  filters:    {},   // {colName: Set<value>}
+  fileMeta:   {},   // {name, size}
+  pivots:     [],   // user-added pivot chart configs
+  numericCache: {}, // {col: number[]} coerced once for speed
+  dateCache:    {}, // {col: Date[]}
+  charts:     [],   // Chart.js instances for cleanup
+  theme:      "dark",
+};
+
+/* ════════════════════════════════════════════════════════════════
+   PALETTE — used across charts
+   ════════════════════════════════════════════════════════════════ */
+const COLORS = ["#ffd166", "#06d6a0", "#4cc9f0", "#b388ff", "#ef476f",
+                "#f78c6b", "#80ed99", "#ffb703", "#9381ff", "#80cbc4",
+                "#f15bb5", "#fee440"];
+function applyChartTheme() {
+  const cs = getComputedStyle(document.body);
+  Chart.defaults.color = cs.getPropertyValue("--muted").trim();
+  Chart.defaults.borderColor = cs.getPropertyValue("--border").trim();
+  Chart.defaults.font.family = "system-ui, sans-serif";
+}
+function destroyAllCharts() {
+  State.charts.forEach(c => { try { c.destroy(); } catch(e){} });
+  State.charts = [];
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  TYPE DETECTION
-// ────────────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
+   TYPE INFERENCE
+   ════════════════════════════════════════════════════════════════ */
 function inferType(values, columnName) {
   const non_null = values.filter(v => v !== null && v !== undefined && v !== "");
-  if (non_null.length === 0) return "empty";
+  if (!non_null.length) return "empty";
 
-  // Date heuristic
-  const parsedDates = non_null.map(v => {
-    if (typeof v !== "string" && typeof v !== "number") return NaN;
+  // Dates
+  const dateRe = /^\d{1,4}[\-\/\.]\d{1,2}[\-\/\.]\d{1,4}/;
+  let dateOk = 0;
+  for (const v of non_null) {
     const s = String(v).trim();
-    // Common date patterns: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, MM/DD/YYYY
-    if (!/\d{1,4}[\-\/]\d{1,2}[\-\/]\d{1,4}/.test(s)) return NaN;
-    const t = Date.parse(s);
-    return isNaN(t) ? NaN : t;
-  });
-  const dateRatio = parsedDates.filter(t => !isNaN(t)).length / non_null.length;
-  if (dateRatio > 0.8) return "date";
+    if (dateRe.test(s) && !isNaN(Date.parse(s))) dateOk++;
+  }
+  if (dateOk / non_null.length > 0.8) return "date";
 
-  // Numeric heuristic
-  const parsedNums = non_null.map(v => {
-    if (typeof v === "number") return v;
-    const s = String(v).replace(/[, ₹$€]/g, "").trim();
+  // Numbers (strip ₹$€, commas, spaces, %)
+  let numOk = 0;
+  const numericValues = [];
+  for (const v of non_null) {
+    let s = typeof v === "number" ? v : String(v).replace(/[, ₹$€%]/g, "").trim();
     const n = Number(s);
-    return isNaN(n) ? NaN : n;
-  });
-  const numRatio = parsedNums.filter(n => !isNaN(n)).length / non_null.length;
-  if (numRatio > 0.85) {
-    // Check for ID-like columns: high uniqueness AND name suggests id
-    const unique = new Set(parsedNums).size;
-    const idLike = /(^|_| )(id|no|number|code)($|_| )/i.test(columnName);
-    if (idLike && unique / non_null.length > 0.9) return "id";
+    if (!isNaN(n)) { numOk++; numericValues.push(n); }
+    else numericValues.push(null);
+  }
+  if (numOk / non_null.length > 0.85) {
+    // ID-like? high uniqueness AND name suggests ID
+    const uniqRatio = new Set(numericValues.filter(v=>v!==null)).size / numOk;
+    if (/(^|_| )(id|no|number|code|sku)($|_| )/i.test(columnName) && uniqRatio > 0.9) return "id";
     return "numeric";
   }
 
-  // Default: categorical (or ID if very high cardinality)
-  const uniqueCount = new Set(non_null.map(String)).size;
-  if (uniqueCount / non_null.length > 0.95 && uniqueCount > 50) return "id";
+  // ID by uniqueness alone
+  const uniq = new Set(non_null.map(String)).size;
+  if (uniq / non_null.length > 0.95 && uniq > 50) return "id";
   return "categorical";
 }
-
 function coerceNumeric(values) {
   return values.map(v => {
     if (v === null || v === undefined || v === "") return null;
     if (typeof v === "number") return v;
-    const s = String(v).replace(/[, ₹$€]/g, "").trim();
+    const s = String(v).replace(/[, ₹$€%]/g, "").trim();
     const n = Number(s);
     return isNaN(n) ? null : n;
   });
 }
-
 function coerceDate(values) {
   return values.map(v => {
     if (v === null || v === undefined || v === "") return null;
@@ -355,37 +611,61 @@ function coerceDate(values) {
   });
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  STATISTICS HELPERS
-// ────────────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
+   STATISTICS
+   ════════════════════════════════════════════════════════════════ */
 function stats(arr) {
   const a = arr.filter(v => v !== null && v !== undefined && !isNaN(v));
-  if (a.length === 0) return null;
-  const sum = a.reduce((p, c) => p + c, 0);
+  if (!a.length) return null;
+  const sum = a.reduce((p,c)=>p+c, 0);
   const mean = sum / a.length;
-  const sorted = [...a].sort((x, y) => x - y);
-  const median = sorted[Math.floor(sorted.length / 2)];
-  const variance = a.reduce((p, c) => p + (c - mean) ** 2, 0) / a.length;
+  const sorted = [...a].sort((x,y) => x-y);
+  const q = p => {
+    const idx = (sorted.length - 1) * p;
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    return lo === hi ? sorted[lo] : sorted[lo] + (idx - lo) * (sorted[hi] - sorted[lo]);
+  };
+  const q1 = q(0.25), median = q(0.5), q3 = q(0.75);
+  const iqr = q3 - q1;
+  const variance = a.reduce((p,c)=>p+(c-mean)**2, 0) / a.length;
+  const std = Math.sqrt(variance);
+  // Outliers via IQR fences
+  const lo_fence = q1 - 1.5 * iqr, hi_fence = q3 + 1.5 * iqr;
+  const outliers = a.filter(v => v < lo_fence || v > hi_fence);
   return {
-    count: a.length, sum, mean, median, min: sorted[0],
-    max: sorted[sorted.length - 1], std: Math.sqrt(variance)
+    count: a.length, sum, mean, median, q1, q3, iqr, std,
+    min: sorted[0], max: sorted[sorted.length - 1],
+    outliers: outliers.length, lo_fence, hi_fence
   };
 }
-
-function topN(arr, n = 10) {
-  const counts = {};
-  arr.forEach(v => {
-    if (v === null || v === undefined || v === "") return;
+function topN(arr, n=15) {
+  const m = new Map();
+  for (const v of arr) {
+    if (v === null || v === undefined || v === "") continue;
     const k = String(v);
-    counts[k] = (counts[k] || 0) + 1;
-  });
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, n);
+    m.set(k, (m.get(k) || 0) + 1);
+  }
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0, n);
+}
+function pearson(x, y) {
+  const n = x.length;
+  if (n < 2) return null;
+  let sx=0, sy=0, sxx=0, syy=0, sxy=0, count=0;
+  for (let i = 0; i < n; i++) {
+    if (x[i] === null || y[i] === null || isNaN(x[i]) || isNaN(y[i])) continue;
+    sx += x[i]; sy += y[i];
+    sxx += x[i]*x[i]; syy += y[i]*y[i]; sxy += x[i]*y[i];
+    count++;
+  }
+  if (count < 3) return null;
+  const num = count*sxy - sx*sy;
+  const den = Math.sqrt((count*sxx - sx*sx) * (count*syy - sy*sy));
+  return den === 0 ? null : num / den;
 }
 
-function formatNumber(n) {
+function formatNumber(n, isPct=false) {
   if (n === null || n === undefined || isNaN(n)) return "—";
+  if (isPct) return n.toFixed(1) + "%";
   if (Math.abs(n) >= 1e7) return (n / 1e7).toFixed(2) + " Cr";
   if (Math.abs(n) >= 1e5) return (n / 1e5).toFixed(2) + " L";
   if (Math.abs(n) >= 1e3) return n.toLocaleString("en-IN", { maximumFractionDigits: 1 });
@@ -393,154 +673,338 @@ function formatNumber(n) {
   return n.toFixed(4);
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  COLUMN-NAME HEURISTICS — to recognise revenue / amount / quantity etc.
-// ────────────────────────────────────────────────────────────────────────
-function nameLooksLikeMoney(name) {
-  return /(revenue|sales|amount|price|total|cost|spend|salary|wage|income|profit|expense|charge|bill|payment|received|outstanding|balance)/i.test(name);
-}
-function nameLooksLikeQty(name) {
-  return /(qty|quantity|units|stock|count|orders|customers|users)/i.test(name);
-}
-function nameLooksLikePct(name) {
-  return /(rate|ratio|pct|percent|%|share|margin)/i.test(name);
-}
+function nameLooksLikeMoney(s) { return /(revenue|sales|amount|price|total|cost|spend|salary|wage|income|profit|expense|charge|bill|payment|received|outstanding|balance)/i.test(s); }
+function nameLooksLikeQty  (s) { return /(qty|quantity|units|stock|count|orders|customers|users|visitors)/i.test(s); }
+function nameLooksLikePct  (s) { return /(rate|ratio|pct|percent|%|share|margin)/i.test(s); }
 
-// ────────────────────────────────────────────────────────────────────────
-//  MAIN ENTRY: process a parsed dataset and render the dashboard
-// ────────────────────────────────────────────────────────────────────────
-function renderDashboard(rows, fileMeta) {
-  if (!rows || rows.length === 0) {
-    alert("No rows found in the file.");
-    showUpload();
-    return;
+/* ════════════════════════════════════════════════════════════════
+   FILE PARSING — CSV / TSV / JSON / XLSX
+   ════════════════════════════════════════════════════════════════ */
+function processFile(file) {
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  showLoading();
+  try {
+    if (ext === "xlsx" || ext === "xls") {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const wb = XLSX.read(reader.result, { type: "array" });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+          loadDataset(rows, { name: file.name, size: file.size });
+        } catch(err) {
+          showError("Excel parse failed: " + err.message);
+        }
+      };
+      reader.onerror = () => showError("Could not read Excel file.");
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+    if (ext === "json") {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const obj = JSON.parse(reader.result);
+          let rows;
+          if (Array.isArray(obj)) rows = obj;
+          else if (obj && typeof obj === "object") {
+            // try common patterns: { data: [...] } or { rows: [...] }
+            rows = obj.data || obj.rows || obj.records || obj.results;
+            if (!Array.isArray(rows)) {
+              // last resort: object of equal-length arrays
+              const keys = Object.keys(obj);
+              if (keys.length && Array.isArray(obj[keys[0]])) {
+                const len = obj[keys[0]].length;
+                rows = [];
+                for (let i = 0; i < len; i++) {
+                  const r = {};
+                  keys.forEach(k => r[k] = obj[k][i]);
+                  rows.push(r);
+                }
+              }
+            }
+          }
+          if (!rows || !rows.length) throw new Error("Could not find a row array in this JSON.");
+          loadDataset(rows, { name: file.name, size: file.size });
+        } catch (err) {
+          showError("JSON parse failed: " + err.message);
+        }
+      };
+      reader.onerror = () => showError("Could not read JSON file.");
+      reader.readAsText(file);
+      return;
+    }
+    // CSV / TSV / TXT
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true, dynamicTyping: false,
+      complete(res) {
+        const rows = res.data.filter(r => Object.values(r).some(v => v !== ""));
+        if (!rows.length) return showError("Empty file — no rows detected.");
+        loadDataset(rows, { name: file.name, size: file.size });
+      },
+      error(err) { showError("Parse failed: " + err.message); }
+    });
+  } catch (err) {
+    showError(err.message);
   }
-  const columns = Object.keys(rows[0]);
+}
+function processCSVText(text, name) {
+  showLoading();
+  const res = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
+  const rows = res.data.filter(r => Object.values(r).some(v => v !== ""));
+  loadDataset(rows, { name, size: text.length });
+}
 
-  // Step 1 — profile each column
-  const profile = columns.map(col => {
-    const values = rows.map(r => r[col]);
+function loadDataset(rawRows, meta) {
+  // Normalise: convert non-string values to strings/numbers consistently
+  // Also strip BOM-prefixed key (PapaParse may leave ﻿ on first col)
+  const cleanedRows = rawRows.map(r => {
+    const o = {};
+    for (const k in r) {
+      const cleanKey = k.replace(/^﻿/, "").trim();
+      o[cleanKey] = r[k];
+    }
+    return o;
+  });
+  State.rawRows = cleanedRows;
+  State.rows    = cleanedRows;
+  State.fileMeta = meta;
+  State.filters = {};
+  State.pivots  = [];
+  State.columns = Object.keys(cleanedRows[0] || {});
+
+  buildProfile();
+  renderEverything();
+
+  document.getElementById("uploadScreen").classList.add("hidden");
+  document.getElementById("loading").classList.add("hidden");
+  document.getElementById("layout").classList.remove("hidden");
+  document.getElementById("resetBtn").disabled  = false;
+  document.getElementById("exportBtn").disabled = false;
+  toast(`Loaded ${cleanedRows.length.toLocaleString("en-IN")} rows × ${State.columns.length} columns`);
+  // Persist pointer in localStorage (just metadata, not the raw data)
+  try { localStorage.setItem("sdnb-kpi-last-file", meta.name || ""); } catch(e){}
+}
+
+/* ════════════════════════════════════════════════════════════════
+   PROFILE BUILD — runs on raw data once; numeric/date caches
+   keyed by column name for fast filter operations
+   ════════════════════════════════════════════════════════════════ */
+function buildProfile() {
+  State.profile = State.columns.map(col => {
+    const values = State.rawRows.map(r => r[col]);
     const non_null = values.filter(v => v !== null && v !== undefined && v !== "");
     const type = inferType(values, col);
-
-    let summary = { col, type, total: rows.length,
-                    non_null: non_null.length,
-                    missing: rows.length - non_null.length,
-                    unique: new Set(non_null.map(String)).size };
-
-    if (type === "numeric") {
-      summary.numeric = coerceNumeric(values);
-      summary.stats = stats(summary.numeric);
+    const p = {
+      col, type, total: State.rawRows.length,
+      non_null: non_null.length,
+      missing: State.rawRows.length - non_null.length,
+      unique: new Set(non_null.map(String)).size
+    };
+    if (type === "numeric" || type === "id") {
+      State.numericCache[col] = coerceNumeric(values);
+      p.stats = stats(State.numericCache[col]);
     } else if (type === "date") {
-      summary.dates = coerceDate(values);
-      const validDates = summary.dates.filter(d => d !== null);
-      if (validDates.length) {
-        summary.dateMin = new Date(Math.min(...validDates));
-        summary.dateMax = new Date(Math.max(...validDates));
+      State.dateCache[col] = coerceDate(values);
+      const valid = State.dateCache[col].filter(d => d !== null);
+      if (valid.length) {
+        p.dateMin = new Date(Math.min(...valid));
+        p.dateMax = new Date(Math.max(...valid));
       }
-    } else if (type === "categorical") {
-      summary.top = topN(values, 12);
     }
-    return summary;
+    if (type === "categorical" || type === "id") {
+      p.top = topN(values, 15);
+    }
+    return p;
   });
-
-  // Step 2 — render dataset snapshot
-  renderSnapshot(rows, columns, profile, fileMeta);
-
-  // Step 3 — render headline KPIs
-  renderHeadlineKPIs(profile);
-
-  // Step 4 — render column profile table
-  renderColumnProfile(profile);
-
-  // Step 5 — render insights
-  renderInsights(rows, profile);
-
-  // Step 6 — render charts
-  renderCharts(rows, profile);
-
-  // Step 7 — render data preview
-  renderPreview(rows, columns);
-
-  // Show dashboard
-  document.getElementById("upload-section").classList.add("hidden");
-  document.getElementById("loading").classList.add("hidden");
-  document.getElementById("dashboard").classList.remove("hidden");
-  document.getElementById("resetBtn").classList.remove("hidden");
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  RENDER: dataset snapshot KPIs
-// ────────────────────────────────────────────────────────────────────────
-function renderSnapshot(rows, columns, profile, meta) {
-  const total_cells = rows.length * columns.length;
-  const missing_cells = profile.reduce((p, c) => p + c.missing, 0);
-  const completeness = (1 - missing_cells / total_cells) * 100;
+/* ════════════════════════════════════════════════════════════════
+   FILTERING
+   ════════════════════════════════════════════════════════════════ */
+function applyFilters() {
+  const fkeys = Object.keys(State.filters);
+  if (!fkeys.length) {
+    State.rows = State.rawRows;
+    return;
+  }
+  State.rows = State.rawRows.filter(r => {
+    for (const k of fkeys) {
+      const set = State.filters[k];
+      if (set.size && !set.has(String(r[k]))) return false;
+    }
+    return true;
+  });
+}
+function addFilter(col, value) {
+  if (!State.filters[col]) State.filters[col] = new Set();
+  State.filters[col].add(String(value));
+  applyFilters();
+  renderEverything();
+}
+function removeFilter(col, value) {
+  if (!State.filters[col]) return;
+  State.filters[col].delete(String(value));
+  if (!State.filters[col].size) delete State.filters[col];
+  applyFilters();
+  renderEverything();
+}
+function clearFilters() {
+  State.filters = {};
+  applyFilters();
+  renderEverything();
+}
 
-  const types = profile.reduce((p, c) => {
-    p[c.type] = (p[c.type] || 0) + 1; return p;
-  }, {});
+/* ════════════════════════════════════════════════════════════════
+   RENDER ENTRY POINT — re-runs on filter/pivot changes
+   ════════════════════════════════════════════════════════════════ */
+function renderEverything() {
+  destroyAllCharts();
+  applyChartTheme();
+  renderFilterBar();
+  renderColumnList();
+  populatePivotSelectors();
+  renderSnapshot();
+  renderHeadlineKPIs();
+  renderInsights();
+  renderColumnProfile();
+  renderCharts();
+  renderPreview();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   FILTER BAR
+   ════════════════════════════════════════════════════════════════ */
+function renderFilterBar() {
+  const bar = document.getElementById("filterBar");
+  const chips = document.getElementById("filterChips");
+  const keys = Object.keys(State.filters);
+  if (!keys.length) { bar.classList.add("empty"); return; }
+  bar.classList.remove("empty");
+  chips.innerHTML = "";
+  keys.forEach(col => {
+    State.filters[col].forEach(val => {
+      const span = document.createElement("span");
+      span.className = "chip";
+      span.innerHTML = `<b>${col}</b> = ${val} <span class="x">✕</span>`;
+      span.querySelector(".x").onclick = () => removeFilter(col, val);
+      chips.appendChild(span);
+    });
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SIDEBAR — column list + pivot builder
+   ════════════════════════════════════════════════════════════════ */
+function renderColumnList() {
+  const list = document.getElementById("columnList");
+  list.innerHTML = State.profile.map(p =>
+    `<div class="col-row" data-col="${escapeAttr(p.col)}">
+       <span class="name" title="${escapeAttr(p.col)}">${escapeHTML(p.col)}</span>
+       <span class="badge ${p.type}">${p.type}</span>
+     </div>`).join("");
+}
+function populatePivotSelectors() {
+  const groupSel = document.getElementById("pivotGroup");
+  const valSel   = document.getElementById("pivotValue");
+  const groupable = State.profile.filter(p => p.type === "categorical" || p.type === "date");
+  const aggable   = State.profile.filter(p => p.type === "numeric");
+
+  groupSel.innerHTML = groupable.map(p => `<option value="${escapeAttr(p.col)}">${escapeHTML(p.col)} (${p.type})</option>`).join("");
+  valSel.innerHTML   = aggable.map(p => `<option value="${escapeAttr(p.col)}">${escapeHTML(p.col)}</option>`).join("");
+
+  if (!groupable.length) groupSel.innerHTML = `<option disabled>No groupable columns</option>`;
+  if (!aggable.length)   valSel.innerHTML   = `<option disabled>No numeric columns</option>`;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SNAPSHOT
+   ════════════════════════════════════════════════════════════════ */
+function renderSnapshot() {
+  const totalCells = State.rows.length * State.columns.length;
+  let missing = 0;
+  // recompute missing only if filters are active (else use profile)
+  if (Object.keys(State.filters).length) {
+    for (const r of State.rows) {
+      for (const c of State.columns) {
+        const v = r[c]; if (v === null || v === undefined || v === "") missing++;
+      }
+    }
+  } else {
+    missing = State.profile.reduce((p, c) => p + c.missing, 0);
+  }
+  const completeness = totalCells ? (1 - missing/totalCells) * 100 : 0;
+  const types = State.profile.reduce((p, c) => { p[c.type] = (p[c.type] || 0) + 1; return p; }, {});
+  const filtered = Object.keys(State.filters).length > 0;
 
   const cards = [
-    { label: "Rows",        value: rows.length.toLocaleString("en-IN") },
-    { label: "Columns",     value: columns.length },
-    { label: "Numeric Cols",     value: types.numeric || 0,     cls: "good" },
-    { label: "Categorical Cols", value: types.categorical || 0, cls: "" },
-    { label: "Date Cols",        value: types.date || 0,        cls: "" },
+    { label: "Rows" + (filtered ? " (filtered)" : ""),
+      value: State.rows.length.toLocaleString("en-IN"),
+      sub: filtered ? `of ${State.rawRows.length.toLocaleString("en-IN")} total` : "" },
+    { label: "Columns", value: State.columns.length },
+    { label: "Numeric",     value: types.numeric || 0,     cls: "good" },
+    { label: "Categorical", value: types.categorical || 0, cls: "" },
+    { label: "Date",        value: types.date || 0,        cls: "" },
     { label: "Completeness",
       value: completeness.toFixed(1) + "%",
       cls: completeness >= 95 ? "good" : (completeness >= 80 ? "warn" : "bad"),
-      sub: missing_cells.toLocaleString("en-IN") + " missing cells" },
-    { label: "File", value: meta.name || "(uploaded)",
-      sub: meta.size ? (meta.size / 1024).toFixed(1) + " KB" : "" }
+      sub: missing.toLocaleString("en-IN") + " missing cells" },
+    { label: "File", value: State.fileMeta.name || "—",
+      sub: State.fileMeta.size ? (State.fileMeta.size/1024).toFixed(1) + " KB" : "" }
   ];
-
-  const html = cards.map(c => `
+  document.getElementById("snapshot").innerHTML = cards.map(c => `
     <div class="kpi ${c.cls || ""}">
       <div class="label">${c.label}</div>
       <div class="value">${c.value}</div>
       ${c.sub ? `<div class="sub">${c.sub}</div>` : ""}
     </div>`).join("");
-  document.getElementById("snapshot").innerHTML = html;
+
+  document.getElementById("snapshotPill").textContent =
+    filtered ? `${State.rows.length}/${State.rawRows.length} rows` : `${State.rows.length} rows`;
+  document.getElementById("previewPill").textContent = `${Math.min(10, State.rows.length)} of ${State.rows.length}`;
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  RENDER: headline KPIs auto-derived from numeric columns
-//  Strategy: pick the most "money-like" numeric columns (by name or magnitude)
-//  and produce sum / mean / max KPI cards for each.
-// ────────────────────────────────────────────────────────────────────────
-function renderHeadlineKPIs(profile) {
-  const numericCols = profile.filter(p => p.type === "numeric" && p.stats);
-  if (numericCols.length === 0) {
-    document.getElementById("headline").innerHTML =
-      `<div class="kpi"><div class="label">Headline KPIs</div>
-       <div class="sub">No numeric columns found — try a dataset with numbers.</div></div>`;
+/* ════════════════════════════════════════════════════════════════
+   HEADLINE KPIS — compute on filtered rows
+   ════════════════════════════════════════════════════════════════ */
+function colNumericFromCurrentRows(col) {
+  return State.rows.map(r => {
+    const v = r[col];
+    if (v === null || v === undefined || v === "") return null;
+    if (typeof v === "number") return v;
+    const s = String(v).replace(/[, ₹$€%]/g, "").trim();
+    const n = Number(s);
+    return isNaN(n) ? null : n;
+  });
+}
+function renderHeadlineKPIs() {
+  const numericCols = State.profile.filter(p => p.type === "numeric");
+  if (!numericCols.length) {
+    document.getElementById("headline").innerHTML = `<div class="kpi"><div class="label">No numeric columns</div><div class="sub">Try a dataset with numeric values to see headline KPIs.</div></div>`;
     return;
   }
-
-  // Score columns: money-like names get top priority
   const scored = numericCols.map(c => {
+    const arr = colNumericFromCurrentRows(c.col);
+    const s = stats(arr);
     let score = 1;
     if (nameLooksLikeMoney(c.col)) score += 10;
     if (nameLooksLikeQty(c.col))   score += 4;
     if (nameLooksLikePct(c.col))   score -= 2;
-    score += Math.log10(Math.max(Math.abs(c.stats.sum), 1)) / 5;
-    return { ...c, score };
-  }).sort((a, b) => b.score - a.score);
+    if (s) score += Math.log10(Math.max(Math.abs(s.sum), 1)) / 5;
+    return { ...c, runtimeStats: s, score };
+  }).filter(c => c.runtimeStats).sort((a,b) => b.score - a.score);
 
-  // Take top 3 columns and produce 3 KPI cards each
   const top = scored.slice(0, 3);
-  let cards = [];
+  const cards = [];
   top.forEach(c => {
     const isMoney = nameLooksLikeMoney(c.col);
     const isPct   = nameLooksLikePct(c.col);
-    const prefix  = isMoney ? "₹" : (isPct ? "" : "");
+    const prefix  = isMoney ? "₹" : "";
     const suffix  = isPct ? "%" : "";
-    cards.push({ label: `Total ${c.col}`, value: prefix + formatNumber(c.stats.sum) + suffix, cls: "good" });
-    cards.push({ label: `Average ${c.col}`, value: prefix + formatNumber(c.stats.mean) + suffix });
-    cards.push({ label: `Max ${c.col}`,    value: prefix + formatNumber(c.stats.max) + suffix, cls: "warn" });
+    cards.push({ label: `Total ${c.col}`,   value: prefix + formatNumber(c.runtimeStats.sum)  + suffix, cls: "good" });
+    cards.push({ label: `Average ${c.col}`, value: prefix + formatNumber(c.runtimeStats.mean) + suffix });
+    cards.push({ label: `Max ${c.col}`,     value: prefix + formatNumber(c.runtimeStats.max)  + suffix, cls: "warn" });
   });
-
   document.getElementById("headline").innerHTML = cards.map(c => `
     <div class="kpi ${c.cls || ""}">
       <div class="label">${c.label}</div>
@@ -548,206 +1012,400 @@ function renderHeadlineKPIs(profile) {
     </div>`).join("");
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  RENDER: column profile table
-// ────────────────────────────────────────────────────────────────────────
-function renderColumnProfile(profile) {
-  const tbody = document.querySelector("#profile tbody");
-  tbody.innerHTML = profile.map(p => {
-    let minOrTop = "—", max = "—", mean = "—";
-    if (p.type === "numeric" && p.stats) {
-      minOrTop = formatNumber(p.stats.min);
-      max      = formatNumber(p.stats.max);
-      mean     = formatNumber(p.stats.mean);
-    } else if (p.type === "date") {
-      if (p.dateMin) minOrTop = p.dateMin.toISOString().slice(0, 10);
-      if (p.dateMax) max      = p.dateMax.toISOString().slice(0, 10);
-    } else if (p.type === "categorical" && p.top.length) {
-      minOrTop = `${p.top[0][0]} (${p.top[0][1]})`;
-    }
-    return `
-      <tr>
-        <td><strong>${p.col}</strong></td>
-        <td class="type ${p.type}">${p.type}</td>
-        <td class="num">${p.non_null.toLocaleString("en-IN")}</td>
-        <td class="num">${p.missing.toLocaleString("en-IN")}</td>
-        <td class="num">${p.unique.toLocaleString("en-IN")}</td>
-        <td>${minOrTop}</td>
-        <td>${max}</td>
-        <td class="num">${mean}</td>
-      </tr>`;
-  }).join("");
-}
-
-// ────────────────────────────────────────────────────────────────────────
-//  RENDER: insights — auto-generated narrative bullets
-// ────────────────────────────────────────────────────────────────────────
-function renderInsights(rows, profile) {
+/* ════════════════════════════════════════════════════════════════
+   INSIGHTS — Smart auto-NLG
+   ════════════════════════════════════════════════════════════════ */
+function renderInsights() {
   const lines = [];
-  const total_cells = rows.length * profile.length;
-  const missing_cells = profile.reduce((p, c) => p + c.missing, 0);
-  const completeness = (1 - missing_cells / total_cells) * 100;
+  const totalCells = State.rows.length * State.columns.length;
+  let missing = 0;
+  for (const r of State.rows)
+    for (const c of State.columns)
+      if (r[c] === null || r[c] === undefined || r[c] === "") missing++;
+  const completeness = totalCells ? (1 - missing/totalCells)*100 : 100;
 
-  // Data quality
-  if (completeness >= 99) {
-    lines.push(`<span class="icon">🟢</span> Dataset is essentially clean — ${completeness.toFixed(1)}% non-null.`);
-  } else if (completeness >= 90) {
-    lines.push(`<span class="icon">🟡</span> Mostly clean (${completeness.toFixed(1)}% non-null) — ${missing_cells.toLocaleString("en-IN")} missing cells worth a look.`);
-  } else {
-    lines.push(`<span class="icon">🔴</span> Significant missing data: only ${completeness.toFixed(1)}% non-null. Consider imputing or excluding rows before analysis.`);
+  if (Object.keys(State.filters).length)
+    lines.push(`<span class="icon">🔍</span> Filters active — ${State.rows.length.toLocaleString("en-IN")} of ${State.rawRows.length.toLocaleString("en-IN")} rows in scope (${(State.rows.length/State.rawRows.length*100).toFixed(1)}%).`);
+
+  if (completeness >= 99) lines.push(`<span class="icon">🟢</span> Dataset is essentially clean — ${completeness.toFixed(1)}% non-null.`);
+  else if (completeness >= 90) lines.push(`<span class="icon">🟡</span> Mostly clean (${completeness.toFixed(1)}% non-null) — ${missing.toLocaleString("en-IN")} missing cells worth a look.`);
+  else lines.push(`<span class="icon">🔴</span> Significant missing data: only ${completeness.toFixed(1)}% non-null. Consider imputing or excluding rows.`);
+
+  // Worst-missing column
+  const worstMissing = [...State.profile].sort((a,b) => b.missing - a.missing)[0];
+  if (worstMissing && worstMissing.missing > 0)
+    lines.push(`<span class="icon">⚠️</span> <strong>${escapeHTML(worstMissing.col)}</strong> has the most gaps — ${worstMissing.missing} missing of ${worstMissing.total} (${(worstMissing.missing/worstMissing.total*100).toFixed(1)}%).`);
+
+  // Money-headline
+  const moneyCols = State.profile.filter(p => p.type==="numeric" && nameLooksLikeMoney(p.col));
+  if (moneyCols.length) {
+    const top = moneyCols.map(c => ({...c, st: stats(colNumericFromCurrentRows(c.col))}))
+                         .filter(c => c.st)
+                         .sort((a,b) => b.st.sum - a.st.sum)[0];
+    if (top) lines.push(`<span class="icon">💰</span> Total <strong>${escapeHTML(top.col)}</strong> = ₹${formatNumber(top.st.sum)} (${top.st.count} records, mean ₹${formatNumber(top.st.mean)}).`);
   }
 
-  // Worst column for missingness
-  const worstMissing = [...profile].sort((a, b) => b.missing - a.missing)[0];
-  if (worstMissing && worstMissing.missing > 0) {
-    lines.push(`<span class="icon">⚠️</span> <strong>${worstMissing.col}</strong> has the most gaps — ${worstMissing.missing} missing of ${worstMissing.total} (${(worstMissing.missing / worstMissing.total * 100).toFixed(1)}%).`);
-  }
-
-  // Highlight numeric columns with extreme spread
-  profile.filter(p => p.type === "numeric" && p.stats).forEach(p => {
-    if (!p.stats || p.stats.mean === 0) return;
-    const cv = p.stats.std / Math.abs(p.stats.mean);
-    if (cv > 1.5) {
-      lines.push(`<span class="icon">📊</span> <strong>${p.col}</strong> is highly variable (std ≈ ${(cv * 100).toFixed(0)}% of mean). Watch for outliers.`);
-    }
+  // Outliers
+  State.profile.filter(p => p.type === "numeric").forEach(p => {
+    const st = stats(colNumericFromCurrentRows(p.col));
+    if (!st || !st.outliers) return;
+    if (st.outliers > 0 && st.outliers / st.count > 0.02)
+      lines.push(`<span class="icon">📉</span> <strong>${escapeHTML(p.col)}</strong>: ${st.outliers} outlier${st.outliers===1?"":"s"} flagged (${(st.outliers/st.count*100).toFixed(1)}% of values fall outside the IQR fences).`);
   });
 
-  // Highlight money-like aggregates
-  const moneyCols = profile.filter(p => p.type === "numeric" && nameLooksLikeMoney(p.col) && p.stats);
-  if (moneyCols.length) {
-    const top = moneyCols.sort((a, b) => b.stats.sum - a.stats.sum)[0];
-    lines.push(`<span class="icon">💰</span> Headline: total <strong>${top.col}</strong> = ₹${formatNumber(top.stats.sum)} across ${top.non_null} records.`);
-  }
-
   // Most-frequent categorical
-  const catCols = profile.filter(p => p.type === "categorical" && p.top && p.top.length);
-  if (catCols.length) {
-    const c = catCols[0];
-    if (c.top[0]) {
-      lines.push(`<span class="icon">🏷️</span> In <strong>${c.col}</strong>, the top value is <strong>${c.top[0][0]}</strong> (${c.top[0][1]} of ${c.non_null} rows = ${(c.top[0][1] / c.non_null * 100).toFixed(0)}%).`);
+  State.profile.filter(p => p.type === "categorical" && p.top && p.top.length).forEach((c, i) => {
+    if (i > 0) return;
+    const top = c.top[0];
+    if (top) lines.push(`<span class="icon">🏷️</span> In <strong>${escapeHTML(c.col)}</strong>, the dominant value is <strong>${escapeHTML(top[0])}</strong> (${top[1]}/${c.non_null} = ${(top[1]/c.non_null*100).toFixed(0)}%).`);
+  });
+
+  // Date range + month-over-month if available
+  const dateCol = State.profile.find(p => p.type === "date" && p.dateMin && p.dateMax);
+  if (dateCol) {
+    const days = Math.round((dateCol.dateMax - dateCol.dateMin) / 86400000);
+    lines.push(`<span class="icon">📅</span> <strong>${escapeHTML(dateCol.col)}</strong> spans ${days.toLocaleString("en-IN")} days (${dateCol.dateMin.toISOString().slice(0,10)} → ${dateCol.dateMax.toISOString().slice(0,10)}).`);
+    // Optional MoM growth on top money col
+    const moneyTop = moneyCols[0];
+    if (moneyTop) {
+      const series = aggregateByMonth(State.rows, dateCol.col, moneyTop.col, "sum");
+      if (series.length >= 2) {
+        const last = series[series.length-1].value;
+        const prev = series[series.length-2].value;
+        if (prev) {
+          const pct = (last - prev) / Math.abs(prev) * 100;
+          const arrow = pct >= 0 ? "↑" : "↓";
+          lines.push(`<span class="icon">📈</span> Latest-month <strong>${escapeHTML(moneyTop.col)}</strong> ${arrow} ${pct >= 0 ? "+" : ""}${pct.toFixed(1)}% vs previous month.`);
+        }
+      }
     }
   }
 
-  // Date range
-  const dateCols = profile.filter(p => p.type === "date" && p.dateMin && p.dateMax);
-  if (dateCols.length) {
-    const d = dateCols[0];
-    const days = Math.round((d.dateMax - d.dateMin) / 86400000);
-    lines.push(`<span class="icon">📅</span> <strong>${d.col}</strong> spans ${days.toLocaleString("en-IN")} days — ${d.dateMin.toISOString().slice(0,10)} to ${d.dateMax.toISOString().slice(0,10)}.`);
+  // Top correlation
+  const numCols = State.profile.filter(p => p.type === "numeric").map(p => p.col);
+  if (numCols.length >= 2) {
+    let best = null;
+    for (let i = 0; i < numCols.length; i++) {
+      for (let j = i+1; j < numCols.length; j++) {
+        const r = pearson(colNumericFromCurrentRows(numCols[i]),
+                          colNumericFromCurrentRows(numCols[j]));
+        if (r === null) continue;
+        if (!best || Math.abs(r) > Math.abs(best.r))
+          best = { a: numCols[i], b: numCols[j], r };
+      }
+    }
+    if (best && Math.abs(best.r) > 0.3)
+      lines.push(`<span class="icon">🔗</span> Strongest correlation: <strong>${escapeHTML(best.a)}</strong> vs <strong>${escapeHTML(best.b)}</strong> (r = ${best.r.toFixed(2)}, ${best.r > 0 ? "positive" : "negative"}).`);
   }
 
   document.getElementById("insights").innerHTML = `<ul>${lines.map(l => `<li>${l}</li>`).join("")}</ul>`;
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  RENDER: charts (auto-generated based on column types)
-// ────────────────────────────────────────────────────────────────────────
-function renderCharts(rows, profile) {
-  const container = document.getElementById("charts");
-  container.innerHTML = "";
-  let chartIdx = 0;
+/* ════════════════════════════════════════════════════════════════
+   COLUMN PROFILE TABLE — sortable
+   ════════════════════════════════════════════════════════════════ */
+let profileSort = { key: null, dir: 1 };
+function renderColumnProfile() {
+  const tbody = document.querySelector("#profile tbody");
+  // Compute per-column stats from filtered rows so this matches the rest
+  const rows = State.profile.map(p => {
+    const r = { col: p.col, type: p.type };
+    if (p.type === "numeric" || p.type === "id") {
+      const arr = colNumericFromCurrentRows(p.col);
+      const s = stats(arr);
+      r.st = s;
+      r.non_null = arr.filter(v => v !== null).length;
+    } else if (p.type === "date") {
+      const arr = (State.rows.map(rw => rw[p.col]));
+      r.non_null = arr.filter(v => v !== null && v !== undefined && v !== "").length;
+    } else {
+      const arr = State.rows.map(rw => rw[p.col]);
+      r.non_null = arr.filter(v => v !== null && v !== undefined && v !== "").length;
+      r.top = topN(arr, 1);
+    }
+    r.missing = State.rows.length - r.non_null;
+    r.unique  = new Set(State.rows.map(rw => rw[p.col]).filter(v => v !== null && v !== undefined && v !== "").map(String)).size;
+    return r;
+  });
 
-  function addCard(title, sub) {
-    const id = `chart_${chartIdx++}`;
-    const card = document.createElement("div");
-    card.className = "chart-card";
-    card.innerHTML = `
-      <h3>${title}</h3>
-      <div class="sub">${sub}</div>
-      <div class="canvas-wrap"><canvas id="${id}"></canvas></div>`;
-    container.appendChild(card);
-    return id;
+  if (profileSort.key) {
+    rows.sort((a,b) => {
+      const va = sortKeyVal(a, profileSort.key);
+      const vb = sortKeyVal(b, profileSort.key);
+      if (va === vb) return 0;
+      if (va === null || va === undefined) return 1;
+      if (vb === null || vb === undefined) return -1;
+      return (va < vb ? -1 : 1) * profileSort.dir;
+    });
   }
 
-  const numericCols = profile.filter(p => p.type === "numeric");
-  const catCols     = profile.filter(p => p.type === "categorical");
-  const dateCols    = profile.filter(p => p.type === "date");
+  tbody.innerHTML = rows.map(r => {
+    let minOrTop = "—", max = "—", mean = "—", median = "—", outliers = "—";
+    if ((r.type === "numeric" || r.type === "id") && r.st) {
+      minOrTop = formatNumber(r.st.min);
+      max      = formatNumber(r.st.max);
+      mean     = formatNumber(r.st.mean);
+      median   = formatNumber(r.st.median);
+      outliers = r.st.outliers > 0
+        ? `<span style="color:var(--bad)">${r.st.outliers}</span>`
+        : "0";
+    } else if (r.type === "date") {
+      const p = State.profile.find(x => x.col === r.col);
+      if (p && p.dateMin) minOrTop = p.dateMin.toISOString().slice(0,10);
+      if (p && p.dateMax) max      = p.dateMax.toISOString().slice(0,10);
+    } else if (r.top && r.top.length) {
+      minOrTop = `${escapeHTML(r.top[0][0])} (${r.top[0][1]})`;
+    }
+    return `
+      <tr>
+        <td><strong>${escapeHTML(r.col)}</strong></td>
+        <td class="type ${r.type}">${r.type}</td>
+        <td class="num">${r.non_null.toLocaleString("en-IN")}</td>
+        <td class="num">${r.missing.toLocaleString("en-IN")}</td>
+        <td class="num">${r.unique.toLocaleString("en-IN")}</td>
+        <td>${minOrTop}</td>
+        <td>${max}</td>
+        <td class="num">${mean}</td>
+        <td class="num">${median}</td>
+        <td class="num">${outliers}</td>
+      </tr>`;
+  }).join("");
+}
+function sortKeyVal(r, key) {
+  if (key === "col" || key === "type") return r[key];
+  if (key === "non_null" || key === "missing" || key === "unique") return r[key];
+  if (r.st) {
+    if (key === "min") return r.st.min;
+    if (key === "max") return r.st.max;
+    if (key === "mean") return r.st.mean;
+    if (key === "median") return r.st.median;
+    if (key === "outliers") return r.st.outliers;
+  }
+  return null;
+}
 
-  // ── 1. Histogram for each numeric column (top 4 by score) ──
-  const ranked = numericCols.map(c => ({
-    ...c,
-    score: (nameLooksLikeMoney(c.col) ? 10 : 0) +
-           (nameLooksLikeQty(c.col)   ?  4 : 0) +
-           Math.log10(Math.max(Math.abs((c.stats || {}).sum || 1), 1))
-  })).sort((a, b) => b.score - a.score);
+/* ════════════════════════════════════════════════════════════════
+   CHARTS
+   ════════════════════════════════════════════════════════════════ */
+function renderCharts() {
+  const container = document.getElementById("charts");
+  container.innerHTML = "";
+  let count = 0;
 
+  function makeCard({ title, sub, span2, tall, controls = [], buildChart }) {
+    const id = `chart_${count++}`;
+    const card = document.createElement("div");
+    card.className = "chart-card" + (span2 ? " span2" : "");
+    card.innerHTML = `
+      <div class="head">
+        <div class="title-block">
+          <h3>${escapeHTML(title)}</h3>
+          <div class="sub">${sub || ""}</div>
+        </div>
+        <div class="actions">
+          ${controls.join("")}
+          <button class="dl-btn" title="Download PNG">📥</button>
+        </div>
+      </div>
+      <div class="canvas-wrap${tall ? " tall" : ""}"><canvas id="${id}"></canvas></div>`;
+    container.appendChild(card);
+    const inst = buildChart(id);
+    if (inst) State.charts.push(inst);
+    card.querySelector(".dl-btn").onclick = () => downloadCanvas(id, title);
+    return { card, id, instance: inst };
+  }
+
+  const numericCols = State.profile.filter(p => p.type === "numeric");
+  const catCols     = State.profile.filter(p => p.type === "categorical");
+  const dateCols    = State.profile.filter(p => p.type === "date");
+
+  // Rank numeric columns by 'importance'
+  const ranked = numericCols.map(c => {
+    const st = stats(colNumericFromCurrentRows(c.col));
+    let score = (nameLooksLikeMoney(c.col) ? 10 : 0)
+              + (nameLooksLikeQty(c.col) ? 4 : 0)
+              + (st ? Math.log10(Math.max(Math.abs(st.sum), 1)) : 0);
+    return { ...c, runtimeStats: st, score };
+  }).filter(c => c.runtimeStats).sort((a,b) => b.score - a.score);
+
+  /* — 1. Distribution histogram + boxplot for top numeric columns — */
   ranked.slice(0, 4).forEach(c => {
-    const data = c.numeric.filter(v => v !== null && !isNaN(v));
-    if (data.length < 2) return;
-    const id = addCard(`Distribution — ${c.col}`,
-                       `${data.length} values · mean ${formatNumber(c.stats.mean)} · max ${formatNumber(c.stats.max)}`);
-    drawHistogram(id, data, c.col);
-  });
-
-  // ── 2. Bar chart of top values for each low-cardinality categorical ──
-  catCols.forEach(c => {
-    if (!c.top || c.top.length < 2) return;
-    if (c.unique > 30 && c.unique > c.non_null * 0.5) return;     // too high cardinality
-    const id = addCard(`Top values — ${c.col}`,
-                       `${c.unique} unique · showing top ${Math.min(c.top.length, 12)}`);
-    drawBar(id, c.top, c.col);
-  });
-
-  // ── 3. If categorical with ≤6 unique, also show pie ──
-  catCols.filter(c => c.top && c.top.length <= 6 && c.unique <= 6).forEach(c => {
-    const id = addCard(`Mix — ${c.col}`, `share of total`);
-    drawPie(id, c.top);
-  });
-
-  // ── 4. Time series: for each date col × top numeric, draw a line ──
-  if (dateCols.length && numericCols.length) {
-    const dCol = dateCols[0];
-    const nCol = ranked[0];           // top-scoring numeric
-    if (nCol) {
-      const series = aggregateByMonth(rows, dCol.col, nCol.col);
-      if (series.length > 1) {
-        const id = addCard(`Trend — ${nCol.col} over time`,
-                           `aggregated by month from ${dCol.col}`);
-        drawLine(id, series, nCol.col);
+    const arr = colNumericFromCurrentRows(c.col).filter(v => v !== null);
+    if (arr.length < 2) return;
+    makeCard({
+      title: `Distribution — ${c.col}`,
+      sub: `n=${arr.length} · mean ${formatNumber(c.runtimeStats.mean)} · median ${formatNumber(c.runtimeStats.median)} · σ ${formatNumber(c.runtimeStats.std)}`,
+      controls: [`<select class="dist-toggle" data-col="${escapeAttr(c.col)}"><option value="hist">Histogram</option><option value="box">Boxplot</option></select>`],
+      buildChart(id) {
+        return drawHistogram(id, arr, c.col);
       }
+    });
+  });
+
+  /* — 2. Top values for low-cardinality categorical — */
+  catCols.forEach(c => {
+    const filtered = State.rows.map(r => r[c.col]);
+    const top = topN(filtered, 12);
+    if (top.length < 2) return;
+    if (c.unique > 30 && c.unique > c.non_null * 0.5) return;
+    const card = makeCard({
+      title: `Top values — ${c.col}`,
+      sub: `${c.unique} unique · click bars to filter`,
+      controls: [`<select class="cat-chart" data-col="${escapeAttr(c.col)}"><option value="bar">Bar</option><option value="hbar">Horizontal</option><option value="pie">Doughnut</option></select>`],
+      buildChart(id) {
+        return drawTopValues(id, top, c.col, "bar");
+      }
+    });
+  });
+
+  /* — 3. Correlation heatmap (≥3 numeric columns) — */
+  if (numericCols.length >= 3) {
+    const cols = numericCols.slice(0, 8).map(c => c.col);
+    const matrix = [];
+    for (let i = 0; i < cols.length; i++) {
+      const row = [];
+      for (let j = 0; j < cols.length; j++) {
+        if (i === j) { row.push(1); continue; }
+        const r = pearson(colNumericFromCurrentRows(cols[i]),
+                          colNumericFromCurrentRows(cols[j]));
+        row.push(r === null ? null : r);
+      }
+      matrix.push(row);
+    }
+    makeCard({
+      title: "Correlation heatmap",
+      sub: `Pearson r between ${cols.length} numeric columns`,
+      span2: true, tall: true,
+      buildChart(id) { return drawCorrHeatmap(id, cols, matrix); }
+    });
+  }
+
+  /* — 4. Time-series for top money column — */
+  if (dateCols.length && ranked.length) {
+    const dCol = dateCols[0], nCol = ranked[0];
+    const series = aggregateByMonth(State.rows, dCol.col, nCol.col, "sum");
+    if (series.length > 1) {
+      makeCard({
+        title: `Trend — ${nCol.col} over time`,
+        sub: `monthly sum from ${dCol.col} (${series.length} periods)`,
+        span2: true,
+        buildChart(id) { return drawLine(id, series, nCol.col); }
+      });
     }
   }
 
-  // ── 5. Categorical × numeric: groupby bar (sum) ──
+  /* — 5. Group-by bar: top money col by top categorical — */
   if (catCols.length && ranked.length) {
     const cCol = catCols.find(c => c.unique <= 12 && c.unique >= 2);
     const nCol = ranked[0];
     if (cCol && nCol) {
-      const grouped = groupSum(rows, cCol.col, nCol.col);
+      const grouped = groupAggregate(State.rows, cCol.col, nCol.col, "sum");
       if (grouped.length > 1) {
-        const id = addCard(`${nCol.col} by ${cCol.col}`,
-                           `aggregated total per group`);
-        drawBar(id, grouped, cCol.col, true);
+        makeCard({
+          title: `${nCol.col} by ${cCol.col}`,
+          sub: `Sum per group · click to filter`,
+          buildChart(id) { return drawTopValues(id, grouped, cCol.col, "bar"); }
+        });
       }
     }
   }
 
-  // ── 6. Scatter for top 2 numeric columns ──
+  /* — 6. Scatter for top 2 numerics — */
   if (ranked.length >= 2) {
     const x = ranked[0], y = ranked[1];
-    const points = rows.map((r, i) => ({
-      x: x.numeric[i], y: y.numeric[i]
-    })).filter(p => p.x !== null && p.y !== null && !isNaN(p.x) && !isNaN(p.y));
+    const xs = colNumericFromCurrentRows(x.col);
+    const ys = colNumericFromCurrentRows(y.col);
+    const points = [];
+    for (let i = 0; i < xs.length; i++) {
+      if (xs[i] !== null && ys[i] !== null && !isNaN(xs[i]) && !isNaN(ys[i]))
+        points.push({ x: xs[i], y: ys[i] });
+    }
     if (points.length > 5) {
-      const id = addCard(`${y.col} vs ${x.col}`,
-                         `scatter · ${points.length} pairs`);
-      drawScatter(id, points, x.col, y.col);
+      const r = pearson(xs, ys);
+      makeCard({
+        title: `${y.col} vs ${x.col}`,
+        sub: `${points.length} pairs · Pearson r = ${r !== null ? r.toFixed(3) : "—"}`,
+        buildChart(id) { return drawScatter(id, points, x.col, y.col); }
+      });
     }
   }
 
-  if (chartIdx === 0) {
-    container.innerHTML =
-      `<div class="chart-card"><h3>No charts available</h3>
-       <div class="sub">The dataset doesn't appear to have enough numeric or categorical structure for auto-charting.</div></div>`;
+  /* — 7. User-added pivot charts — */
+  State.pivots.forEach((pv, i) => {
+    const grouped = groupAggregate(State.rows, pv.group, pv.value, pv.agg);
+    if (!grouped.length) return;
+    makeCard({
+      title: `Pivot — ${pv.agg}(${pv.value}) by ${pv.group}`,
+      sub: `${grouped.length} groups · custom`,
+      controls: [`<button class="rm-pivot" data-i="${i}" title="Remove">✕</button>`],
+      buildChart(id) {
+        if (pv.chart === "line") return drawLine(id, grouped.map(([k,v]) => ({label:k, value:v})), pv.value);
+        if (pv.chart === "doughnut") return drawDonut(id, grouped);
+        if (pv.chart === "horizontalBar") return drawTopValues(id, grouped, pv.group, "hbar");
+        return drawTopValues(id, grouped, pv.group, "bar");
+      }
+    });
+  });
+
+  document.getElementById("chartPill").textContent = `${count} charts`;
+
+  if (count === 0) {
+    container.innerHTML = `<div class="chart-card"><h3>No charts available</h3><div class="sub">The dataset doesn't have enough numeric or categorical structure to auto-build charts. Try the Pivot Builder on the left.</div></div>`;
   }
+
+  // Wire up bar-click filter, chart-type switcher, pivot remove, distribution toggle
+  container.querySelectorAll(".rm-pivot").forEach(btn => {
+    btn.onclick = () => {
+      State.pivots.splice(parseInt(btn.dataset.i), 1);
+      renderEverything();
+      toast("Pivot removed");
+    };
+  });
+  container.querySelectorAll(".cat-chart").forEach(sel => {
+    sel.onchange = () => {
+      const col = sel.dataset.col;
+      const card = sel.closest(".chart-card");
+      const canvas = card.querySelector("canvas");
+      const id = canvas.id;
+      // destroy previous
+      const inst = State.charts.find(c => c.canvas && c.canvas.id === id);
+      if (inst) { try { inst.destroy(); } catch(e){} }
+      State.charts = State.charts.filter(c => c.canvas && c.canvas.id !== id);
+      const top = topN(State.rows.map(r => r[col]), 12);
+      let newInst;
+      if (sel.value === "pie")
+        newInst = drawDonut(id, top);
+      else
+        newInst = drawTopValues(id, top, col, sel.value);
+      if (newInst) State.charts.push(newInst);
+    };
+  });
+  container.querySelectorAll(".dist-toggle").forEach(sel => {
+    sel.onchange = () => {
+      const col = sel.dataset.col;
+      const card = sel.closest(".chart-card");
+      const canvas = card.querySelector("canvas");
+      const id = canvas.id;
+      const inst = State.charts.find(c => c.canvas && c.canvas.id === id);
+      if (inst) { try { inst.destroy(); } catch(e){} }
+      State.charts = State.charts.filter(c => c.canvas && c.canvas.id !== id);
+      const arr = colNumericFromCurrentRows(col).filter(v => v !== null);
+      let newInst;
+      if (sel.value === "box")
+        newInst = drawBoxplot(id, arr, col);
+      else
+        newInst = drawHistogram(id, arr, col);
+      if (newInst) State.charts.push(newInst);
+    };
+  });
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  CHART DRAWING — Chart.js wrappers
-// ────────────────────────────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════
+   CHART DRAWING
+   ════════════════════════════════════════════════════════════════ */
 function drawHistogram(canvasId, data, label) {
-  const min = Math.min(...data);
-  const max = Math.max(...data);
+  if (!data.length) return null;
+  const min = Math.min(...data), max = Math.max(...data);
   const bins = Math.min(20, Math.max(5, Math.ceil(Math.sqrt(data.length))));
   const binSize = (max - min) / bins || 1;
   const counts = new Array(bins).fill(0);
@@ -755,231 +1413,398 @@ function drawHistogram(canvasId, data, label) {
     const idx = Math.min(bins - 1, Math.floor((v - min) / binSize));
     counts[idx]++;
   });
-  const labels = counts.map((_, i) => {
-    const lo = min + i * binSize;
-    return formatNumber(lo);
-  });
-  const ctx = document.getElementById(canvasId);
-  chartRegistry.push(new Chart(ctx, {
+  const labels = counts.map((_, i) => formatNumber(min + i * binSize));
+  return new Chart(document.getElementById(canvasId), {
     type: "bar",
     data: { labels, datasets: [{ label, data: counts,
-                                  backgroundColor: "#06d6a0", borderColor: "#06d6a0" }] },
+                                  backgroundColor: COLORS[1], borderColor: COLORS[1] }] },
     options: chartOpts({ legend: false })
-  }));
+  });
 }
-
-function drawBar(canvasId, pairs, label, sumStyle = false) {
+function drawBoxplot(canvasId, data, label) {
+  if (!data.length || !window.ChartBoxPlot) {
+    // Fallback: draw a simple bar with quartile markers
+    const s = stats(data);
+    return new Chart(document.getElementById(canvasId), {
+      type: "bar",
+      data: { labels: ["min","Q1","median","Q3","max"],
+              datasets: [{ data: [s.min, s.q1, s.median, s.q3, s.max],
+                           backgroundColor: COLORS[3] }]},
+      options: chartOpts({ legend: false })
+    });
+  }
+  return new Chart(document.getElementById(canvasId), {
+    type: "boxplot",
+    data: {
+      labels: [label],
+      datasets: [{ label,
+                   data: [data],
+                   backgroundColor: "rgba(255,209,102,0.3)",
+                   borderColor: COLORS[0], borderWidth: 1.5,
+                   itemRadius: 0, outlierRadius: 3,
+                   outlierBackgroundColor: COLORS[4] }]
+    },
+    options: chartOpts({ legend: false })
+  });
+}
+function drawTopValues(canvasId, pairs, colName, kind) {
   const labels = pairs.map(p => p[0]);
-  const counts = pairs.map(p => p[1]);
-  const ctx = document.getElementById(canvasId);
-  chartRegistry.push(new Chart(ctx, {
+  const values = pairs.map(p => p[1]);
+  return new Chart(document.getElementById(canvasId), {
     type: "bar",
     data: {
       labels,
-      datasets: [{
-        label: sumStyle ? "Total" : "Count",
-        data: counts,
-        backgroundColor: COLORS.slice(0, labels.length),
-      }]
+      datasets: [{ label: "Value", data: values,
+                   backgroundColor: COLORS.slice(0, labels.length) }]
     },
-    options: chartOpts({ legend: false, indexAxis: labels.length > 8 ? "y" : "x" })
-  }));
+    options: chartOpts({
+      legend: false,
+      indexAxis: kind === "hbar" ? "y" : (labels.length > 8 ? "y" : "x"),
+      onClick(_, els) {
+        if (els.length) {
+          const idx = els[0].index;
+          addFilter(colName, labels[idx]);
+        }
+      }
+    })
+  });
 }
-
-function drawPie(canvasId, pairs) {
-  const ctx = document.getElementById(canvasId);
-  chartRegistry.push(new Chart(ctx, {
+function drawDonut(canvasId, pairs) {
+  return new Chart(document.getElementById(canvasId), {
     type: "doughnut",
     data: {
       labels: pairs.map(p => p[0]),
-      datasets: [{ data: pairs.map(p => p[1]), backgroundColor: COLORS }]
+      datasets: [{ data: pairs.map(p => p[1]),
+                   backgroundColor: COLORS,
+                   borderColor: getComputedStyle(document.body).getPropertyValue("--panel"),
+                   borderWidth: 2 }]
     },
     options: chartOpts({ legend: true, scales: false })
-  }));
+  });
 }
-
 function drawLine(canvasId, series, label) {
-  const ctx = document.getElementById(canvasId);
-  chartRegistry.push(new Chart(ctx, {
+  return new Chart(document.getElementById(canvasId), {
     type: "line",
     data: {
       labels: series.map(p => p.label),
-      datasets: [{
-        label, data: series.map(p => p.value),
-        borderColor: "#ffd166", backgroundColor: "rgba(255,209,102,0.2)",
-        tension: 0.3, fill: true, pointRadius: 3
-      }]
+      datasets: [{ label, data: series.map(p => p.value),
+                   borderColor: COLORS[0],
+                   backgroundColor: "rgba(255,209,102,0.2)",
+                   tension: 0.3, fill: true, pointRadius: 3 }]
     },
     options: chartOpts({ legend: false })
-  }));
+  });
 }
-
-function drawScatter(canvasId, points, xLabel, yLabel) {
-  const ctx = document.getElementById(canvasId);
-  chartRegistry.push(new Chart(ctx, {
+function drawScatter(canvasId, points, xL, yL) {
+  return new Chart(document.getElementById(canvasId), {
     type: "scatter",
-    data: { datasets: [{ label: `${yLabel} vs ${xLabel}`,
-                         data: points,
+    data: { datasets: [{ data: points,
                          backgroundColor: "rgba(76,201,240,0.6)",
-                         borderColor: "#4cc9f0" }] },
-    options: chartOpts({
-      legend: false,
-      xTitle: xLabel, yTitle: yLabel
-    })
-  }));
+                         borderColor: COLORS[2] }] },
+    options: chartOpts({ legend: false, xTitle: xL, yTitle: yL })
+  });
 }
-
+function drawCorrHeatmap(canvasId, cols, matrix) {
+  // Use Chart.js's matrix-like rendering via scatter
+  const points = [];
+  for (let i = 0; i < cols.length; i++) {
+    for (let j = 0; j < cols.length; j++) {
+      const r = matrix[i][j];
+      if (r === null) continue;
+      points.push({ x: j, y: cols.length - 1 - i, r });
+    }
+  }
+  const cs = getComputedStyle(document.body);
+  const muted = cs.getPropertyValue("--muted").trim();
+  return new Chart(document.getElementById(canvasId), {
+    type: "scatter",
+    data: { datasets: [{
+      data: points,
+      pointStyle: "rect",
+      pointRadius: ctx => 22,
+      backgroundColor: ctx => {
+        const r = ctx.raw && ctx.raw.r;
+        if (r == null) return "transparent";
+        // Diverging palette: red (-1) → grey (0) → green (+1)
+        if (r >= 0) {
+          const a = Math.min(1, r);
+          return `rgba(6,214,160,${a*0.85+0.05})`;
+        }
+        const a = Math.min(1, -r);
+        return `rgba(239,71,111,${a*0.85+0.05})`;
+      },
+      borderColor: "rgba(0,0,0,0.1)", borderWidth: 0.5
+    }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              const j = ctx.parsed.x, i = cols.length - 1 - ctx.parsed.y;
+              const r = matrix[i][j];
+              return `${cols[i]} vs ${cols[j]} → r = ${r !== null ? r.toFixed(3) : "—"}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            stepSize: 1, color: muted,
+            callback: v => cols[v] || ""
+          },
+          grid: { display: false }, min: -0.5, max: cols.length - 0.5
+        },
+        y: {
+          ticks: {
+            stepSize: 1, color: muted,
+            callback: v => cols[cols.length - 1 - v] || ""
+          },
+          grid: { display: false }, min: -0.5, max: cols.length - 0.5
+        }
+      }
+    }
+  });
+}
 function chartOpts({ legend = true, indexAxis = "x", scales = true,
-                     xTitle = "", yTitle = "" } = {}) {
+                     xTitle = "", yTitle = "", onClick = null } = {}) {
+  const cs = getComputedStyle(document.body);
+  const muted = cs.getPropertyValue("--muted").trim();
+  const border = cs.getPropertyValue("--border").trim();
   const opts = {
     responsive: true, maintainAspectRatio: false,
-    indexAxis,
+    indexAxis, animation: { duration: 350 },
     plugins: {
-      legend: { display: legend, labels: { color: "#99a3c2", boxWidth: 12 } },
-      tooltip: { backgroundColor: "#181d36", borderColor: "#2a3160",
-                 borderWidth: 1, titleColor: "#ffd166", bodyColor: "#e6e9f5" }
-    }
+      legend: { display: legend, labels: { color: muted, boxWidth: 12 } },
+      tooltip: { backgroundColor: cs.getPropertyValue("--panel").trim(),
+                 borderColor: border, borderWidth: 1,
+                 titleColor: cs.getPropertyValue("--accent").trim(),
+                 bodyColor: cs.getPropertyValue("--text").trim() }
+    },
+    onClick
   };
   if (scales) {
     opts.scales = {
-      x: { ticks: { color: "#99a3c2" }, grid: { color: "#2a3160" },
-           title: { display: !!xTitle, text: xTitle, color: "#99a3c2" } },
-      y: { ticks: { color: "#99a3c2" }, grid: { color: "#2a3160" },
-           title: { display: !!yTitle, text: yTitle, color: "#99a3c2" } }
+      x: { ticks: { color: muted }, grid: { color: border },
+           title: { display: !!xTitle, text: xTitle, color: muted } },
+      y: { ticks: { color: muted }, grid: { color: border },
+           title: { display: !!yTitle, text: yTitle, color: muted } }
     };
   }
   return opts;
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  AGGREGATIONS used by chart rendering
-// ────────────────────────────────────────────────────────────────────────
-function groupSum(rows, groupCol, valueCol) {
-  const map = {};
-  rows.forEach(r => {
+/* ════════════════════════════════════════════════════════════════
+   AGGREGATIONS
+   ════════════════════════════════════════════════════════════════ */
+function groupAggregate(rows, groupCol, valCol, agg) {
+  const map = new Map();
+  for (const r of rows) {
     const k = r[groupCol];
-    if (k === null || k === undefined || k === "") return;
-    const raw = r[valueCol];
+    if (k === null || k === undefined || k === "") continue;
     let v = null;
+    const raw = r[valCol];
     if (typeof raw === "number") v = raw;
     else if (raw !== null && raw !== undefined && raw !== "") {
-      const s = String(raw).replace(/[, ₹$€]/g, "").trim();
+      const s = String(raw).replace(/[, ₹$€%]/g, "").trim();
       const n = Number(s);
       if (!isNaN(n)) v = n;
     }
-    if (v === null) return;
-    map[k] = (map[k] || 0) + v;
-  });
-  return Object.entries(map)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 12);
+    if (v === null && agg !== "count") continue;
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(v);
+  }
+  const result = [];
+  for (const [k, arr] of map) {
+    let val;
+    if (agg === "sum")    val = arr.reduce((a,b)=>a+b, 0);
+    else if (agg === "mean") val = arr.reduce((a,b)=>a+b, 0) / arr.length;
+    else if (agg === "min")  val = Math.min(...arr);
+    else if (agg === "max")  val = Math.max(...arr);
+    else if (agg === "median") {
+      const s = [...arr].sort((a,b)=>a-b); val = s[Math.floor(s.length/2)];
+    }
+    else if (agg === "count") val = arr.length;
+    result.push([k, val]);
+  }
+  return result.sort((a,b) => b[1] - a[1]).slice(0, 20);
 }
-
-function aggregateByMonth(rows, dateCol, valueCol) {
-  const map = {};
-  rows.forEach(r => {
+function aggregateByMonth(rows, dateCol, valCol, agg) {
+  const map = new Map();
+  for (const r of rows) {
     const t = Date.parse(String(r[dateCol]));
-    if (isNaN(t)) return;
+    if (isNaN(t)) continue;
     const d = new Date(t);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const raw = r[valueCol];
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
     let v = null;
+    const raw = r[valCol];
     if (typeof raw === "number") v = raw;
     else if (raw !== null && raw !== undefined && raw !== "") {
-      const s = String(raw).replace(/[, ₹$€]/g, "").trim();
+      const s = String(raw).replace(/[, ₹$€%]/g, "").trim();
       const n = Number(s);
       if (!isNaN(n)) v = n;
     }
-    if (v === null) return;
-    map[key] = (map[key] || 0) + v;
-  });
-  return Object.entries(map)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([label, value]) => ({ label, value }));
+    if (v === null) continue;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(v);
+  }
+  const out = [];
+  for (const [k, arr] of map) {
+    let v;
+    if (agg === "mean") v = arr.reduce((a,b)=>a+b,0) / arr.length;
+    else                v = arr.reduce((a,b)=>a+b,0);
+    out.push({ label: k, value: v });
+  }
+  return out.sort((a,b) => a.label.localeCompare(b.label));
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  RENDER: data preview (first 10 rows)
-// ────────────────────────────────────────────────────────────────────────
-function renderPreview(rows, columns) {
+/* ════════════════════════════════════════════════════════════════
+   PREVIEW TABLE (first 10 rows of filtered data)
+   ════════════════════════════════════════════════════════════════ */
+function renderPreview() {
   const headRow = document.querySelector("#preview thead tr");
-  headRow.innerHTML = columns.map(c => `<th>${c}</th>`).join("");
+  headRow.innerHTML = State.columns.map(c => `<th>${escapeHTML(c)}</th>`).join("");
   const tbody = document.querySelector("#preview tbody");
-  tbody.innerHTML = rows.slice(0, 10).map(r =>
-    `<tr>${columns.map(c => {
+  tbody.innerHTML = State.rows.slice(0, 10).map(r =>
+    `<tr>${State.columns.map(c => {
        const v = r[c];
-       return `<td>${v === null || v === undefined ? "" : String(v)}</td>`;
+       return `<td>${v === null || v === undefined ? "" : escapeHTML(String(v))}</td>`;
      }).join("")}</tr>`
   ).join("");
 }
 
-// ────────────────────────────────────────────────────────────────────────
-//  EVENT WIRING
-// ────────────────────────────────────────────────────────────────────────
-function showLoading() {
-  document.getElementById("upload-section").classList.add("hidden");
-  document.getElementById("dashboard").classList.add("hidden");
-  document.getElementById("loading").classList.remove("hidden");
-}
-function showUpload() {
-  destroyCharts();
-  document.getElementById("loading").classList.add("hidden");
-  document.getElementById("dashboard").classList.add("hidden");
-  document.getElementById("upload-section").classList.remove("hidden");
-  document.getElementById("resetBtn").classList.add("hidden");
-  document.getElementById("fileInput").value = "";
-}
-
-function processFile(file) {
-  showLoading();
-  Papa.parse(file, {
-    header: true, skipEmptyLines: true, dynamicTyping: false,
-    complete(results) {
-      if (results.errors.length) {
-        console.warn("Parse warnings:", results.errors.slice(0, 5));
-      }
-      // Filter empty rows
-      const rows = results.data.filter(r => Object.values(r).some(v => v !== ""));
-      destroyCharts();
-      renderDashboard(rows, { name: file.name, size: file.size });
-    },
-    error(err) {
-      alert("Failed to parse file: " + err.message);
-      showUpload();
-    }
-  });
+/* ════════════════════════════════════════════════════════════════
+   PNG EXPORT for individual chart
+   ════════════════════════════════════════════════════════════════ */
+function downloadCanvas(canvasId, title) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  // Compose with a background colour so dark mode looks right
+  const tmp = document.createElement("canvas");
+  tmp.width = canvas.width; tmp.height = canvas.height;
+  const ctx = tmp.getContext("2d");
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--panel").trim() || "#fff";
+  ctx.fillRect(0, 0, tmp.width, tmp.height);
+  ctx.drawImage(canvas, 0, 0);
+  const link = document.createElement("a");
+  link.download = `${title.replace(/[^a-z0-9]+/gi, "_")}.png`;
+  link.href = tmp.toDataURL("image/png");
+  link.click();
 }
 
-function processCSVText(text, name) {
-  showLoading();
-  const results = Papa.parse(text, {
-    header: true, skipEmptyLines: true, dynamicTyping: false
-  });
-  const rows = results.data.filter(r => Object.values(r).some(v => v !== ""));
-  destroyCharts();
-  renderDashboard(rows, { name, size: text.length });
+/* ════════════════════════════════════════════════════════════════
+   THEME MANAGEMENT
+   ════════════════════════════════════════════════════════════════ */
+function setTheme(t) {
+  State.theme = t;
+  document.body.setAttribute("data-theme", t);
+  document.getElementById("themeBtn").textContent = t === "dark" ? "☀️ Light" : "🌙 Dark";
+  try { localStorage.setItem("sdnb-kpi-theme", t); } catch(e){}
+  if (State.rawRows.length) renderEverything();
 }
 
-document.getElementById("fileInput").addEventListener("change", e => {
+/* ════════════════════════════════════════════════════════════════
+   UI EVENTS
+   ════════════════════════════════════════════════════════════════ */
+const dropZone = document.getElementById("dropZone");
+document.getElementById("fileInput").onchange = e => {
   if (e.target.files[0]) processFile(e.target.files[0]);
-});
-
-const drop = document.getElementById("drop");
-["dragenter", "dragover"].forEach(ev =>
-  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
-["dragleave", "drop"].forEach(ev =>
-  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
-drop.addEventListener("drop", e => {
+};
+["dragenter","dragover"].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add("over"); }));
+["dragleave","drop"].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove("over"); }));
+dropZone.addEventListener("drop", e => {
   if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
 });
 
-document.getElementById("resetBtn").addEventListener("click", showUpload);
+document.getElementById("resetBtn").onclick = () => {
+  destroyAllCharts();
+  State.rawRows = []; State.rows = []; State.profile = []; State.filters = {}; State.pivots = [];
+  document.getElementById("layout").classList.add("hidden");
+  document.getElementById("uploadScreen").classList.remove("hidden");
+  document.getElementById("filterBar").classList.add("empty");
+  document.getElementById("fileInput").value = "";
+  document.getElementById("resetBtn").disabled = true;
+  document.getElementById("exportBtn").disabled = true;
+};
+document.getElementById("themeBtn").onclick = () =>
+  setTheme(State.theme === "dark" ? "light" : "dark");
+document.getElementById("exportBtn").onclick = () => window.print();
+document.getElementById("clearFiltersBtn").onclick = clearFilters;
 
-// ────────────────────────────────────────────────────────────────────────
-//  SAMPLE DATASETS — built-in for instant demo
-// ────────────────────────────────────────────────────────────────────────
+// Sortable profile table
+document.querySelector("#profile thead").addEventListener("click", e => {
+  const th = e.target.closest("th"); if (!th) return;
+  const key = th.dataset.key; if (!key) return;
+  if (profileSort.key === key) profileSort.dir = -profileSort.dir;
+  else { profileSort.key = key; profileSort.dir = 1; }
+  document.querySelectorAll("#profile th").forEach(t => t.classList.remove("sort-asc","sort-desc"));
+  th.classList.add(profileSort.dir > 0 ? "sort-asc" : "sort-desc");
+  renderColumnProfile();
+});
+
+// Pivot builder
+document.getElementById("pivotAddBtn").onclick = () => {
+  const group = document.getElementById("pivotGroup").value;
+  const value = document.getElementById("pivotValue").value;
+  const agg   = document.getElementById("pivotAgg").value;
+  const chart = document.getElementById("pivotChart").value;
+  if (!group || !value) { toast("Choose a group and value column"); return; }
+  State.pivots.push({ group, value, agg, chart });
+  renderEverything();
+  toast("Pivot chart added at the bottom of the charts grid");
+};
+
+// Sample buttons (in upload screen + sidebar)
+document.querySelectorAll("[data-sample]").forEach(b => {
+  b.onclick = () => {
+    const key = b.dataset.sample;
+    if (SAMPLES[key]) processCSVText(SAMPLES[key], `${key}_sample.csv`);
+  };
+});
+
+/* ════════════════════════════════════════════════════════════════
+   UTILITIES
+   ════════════════════════════════════════════════════════════════ */
+function showLoading() {
+  document.getElementById("uploadScreen").classList.add("hidden");
+  document.getElementById("layout").classList.add("hidden");
+  document.getElementById("loading").classList.remove("hidden");
+}
+function showError(msg) {
+  document.getElementById("loading").classList.add("hidden");
+  document.getElementById("uploadScreen").classList.remove("hidden");
+  toast("⚠️ " + msg, 4500);
+}
+function toast(msg, ms=2200) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove("show"), ms);
+}
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, ch =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[ch]);
+}
+function escapeAttr(s) { return String(s).replace(/"/g, "&quot;"); }
+
+/* ════════════════════════════════════════════════════════════════
+   STARTUP — restore theme, hook up
+   ════════════════════════════════════════════════════════════════ */
+try {
+  const t = localStorage.getItem("sdnb-kpi-theme");
+  if (t === "light" || t === "dark") setTheme(t);
+} catch(e){}
+
+/* ════════════════════════════════════════════════════════════════
+   BUILT-IN SAMPLE DATASETS
+   ════════════════════════════════════════════════════════════════ */
 const SAMPLES = {
-  sales: `Date,Product,Category,Region,Units,Price,Revenue
+sales: `Date,Product,Category,Region,Units,Price,Revenue
 2026-01-05,Silk Saree,Textiles,Chennai,12,2499,29988
 2026-01-08,Bluetooth Speaker,Electronics,Bengaluru,8,1999,15992
 2026-01-12,Cotton Saree,Textiles,Chennai,25,899,22475
@@ -999,9 +1824,11 @@ const SAMPLES = {
 2026-04-04,Power Bank,Electronics,Chennai,15,1499,22485
 2026-04-10,Smart Watch,Electronics,Bengaluru,9,3499,31491
 2026-04-15,Kurti Set,Textiles,Mumbai,18,1299,23382
-2026-04-20,Cotton Saree,Textiles,Madurai,28,899,25172`,
+2026-04-20,Cotton Saree,Textiles,Madurai,28,899,25172
+2026-04-25,Bridal Lehenga,Textiles,Chennai,2,8999,17998
+2026-04-28,Notebook,Stationery,Bengaluru,55,89,4895`,
 
-  employees: `EmpID,Name,Department,Designation,Age,Gender,JoinDate,BasicSalary,HRA,Bonus
+employees: `EmpID,Name,Department,Designation,Age,Gender,JoinDate,BasicSalary,HRA,Bonus
 E001,Priya Sharma,Engineering,Senior Developer,32,F,2020-03-15,85000,30000,15000
 E002,Arun Krishnan,Sales,Sales Manager,38,M,2018-07-20,75000,28000,25000
 E003,Kavitha R,HR,HR Executive,29,F,2021-09-10,45000,18000,5000
@@ -1016,9 +1843,11 @@ E011,Lakshmi S,Finance,Senior Accountant,36,F,2019-03-28,70000,25000,12000
 E012,Ramesh G,Operations,Logistics Head,44,M,2016-10-15,110000,38000,22000
 E013,Anitha P,HR,HR Manager,39,F,2018-09-08,80000,28000,15000
 E014,Vignesh K,Engineering,DevOps Engineer,30,M,2020-11-20,75000,26000,12000
-E015,Bhavya R,Marketing,Content Lead,33,F,2019-07-14,65000,22000,10000`,
+E015,Bhavya R,Marketing,Content Lead,33,F,2019-07-14,65000,22000,10000
+E016,Hari Prasad,Sales,Sales Lead,40,M,2017-08-05,95000,32000,30000
+E017,Janani K,Engineering,QA Engineer,27,F,2022-11-12,52000,18000,8000`,
 
-  inventory: `SKU,Product,Category,Stock,UnitPrice,ReorderLevel,Supplier,LastReceived
+inventory: `SKU,Product,Category,Stock,UnitPrice,ReorderLevel,Supplier,LastReceived
 P001,Silk Saree Red,Textiles,18,2499,10,Bombay Dyeing,2026-04-12
 P002,Cotton Saree,Textiles,42,899,25,Vardhman,2026-04-18
 P003,Bridal Lehenga,Textiles,3,8999,5,Designer Studio,2026-03-22
@@ -1038,15 +1867,32 @@ P016,Calculator,Stationery,17,449,15,Casio,2026-04-05
 P017,Stapler,Stationery,22,199,15,Kangaro,2026-04-10
 P018,Marker Pens,Stationery,2,149,10,Camlin,2026-03-28
 P019,Whiteboard,Stationery,0,2499,3,Roxy,2026-03-15
-P020,Highlighter Pack,Stationery,4,99,20,Camlin,2026-04-01`
+P020,Highlighter Pack,Stationery,4,99,20,Camlin,2026-04-01`,
+
+transactions: `Date,Description,Category,Amount,Type,Account,Reference
+2026-04-01,Salary - April,Income,85000,Credit,SBI Savings,SAL-2604
+2026-04-02,Rent,Housing,18000,Debit,SBI Savings,UPI-12345
+2026-04-03,Groceries,Food,3450,Debit,SBI Savings,UPI-12346
+2026-04-04,Petrol,Transport,2200,Debit,HDFC Credit,UPI-12347
+2026-04-05,Electricity,Utilities,2800,Debit,SBI Savings,EBILL-04
+2026-04-06,Restaurant,Food,1850,Debit,HDFC Credit,UPI-12349
+2026-04-08,Online Shopping,Shopping,4799,Debit,HDFC Credit,UPI-12350
+2026-04-10,Movie,Entertainment,950,Debit,HDFC Credit,UPI-12351
+2026-04-11,Pharmacy,Healthcare,1280,Debit,SBI Savings,UPI-12352
+2026-04-12,Mobile Recharge,Utilities,799,Debit,SBI Savings,UPI-12353
+2026-04-14,Freelance,Income,15000,Credit,SBI Savings,FRL-2604
+2026-04-15,Insurance Premium,Insurance,4200,Debit,SBI Savings,LIC-04
+2026-04-16,Restaurant,Food,2300,Debit,HDFC Credit,UPI-12355
+2026-04-18,Groceries,Food,2900,Debit,SBI Savings,UPI-12356
+2026-04-20,Gym Membership,Healthcare,2500,Debit,HDFC Credit,UPI-12357
+2026-04-22,Petrol,Transport,1800,Debit,SBI Savings,UPI-12358
+2026-04-24,Online Shopping,Shopping,6499,Debit,HDFC Credit,UPI-12359
+2026-04-25,Salary Advance,Income,10000,Credit,SBI Savings,ADV-2604
+2026-04-26,Internet Bill,Utilities,1199,Debit,SBI Savings,ACT-04
+2026-04-28,Restaurant,Food,1450,Debit,HDFC Credit,UPI-12361
+2026-04-29,Books,Education,2199,Debit,HDFC Credit,UPI-12362
+2026-04-30,Travel,Transport,5800,Debit,SBI Savings,UPI-12363`
 };
-
-document.querySelectorAll("[data-sample]").forEach(btn =>
-  btn.addEventListener("click", () => {
-    const key = btn.dataset.sample;
-    if (SAMPLES[key]) processCSVText(SAMPLES[key], `${key}_sample.csv`);
-  }));
-
 </script>
 </body>
 </html>
